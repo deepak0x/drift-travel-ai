@@ -9,7 +9,7 @@ targetScope = 'subscription'
 param location string = 'eastus2'
 
 @description('Environment name')
-@allowed(['dev', 'staging', 'prod'])c
+@allowed(['dev', 'staging', 'prod'])
 param environment string = 'dev'
 
 @description('Unique suffix for resource names')
@@ -40,7 +40,6 @@ module resources 'modules/resources.bicep' = {
     location: location
     prefix: prefix
     uniqueSuffix: uniqueSuffix
-    environment: environment
   }
 }
 

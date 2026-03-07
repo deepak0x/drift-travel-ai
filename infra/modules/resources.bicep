@@ -12,9 +12,6 @@ param prefix string
 @description('Unique suffix')
 param uniqueSuffix string
 
-@description('Environment')
-param environment string
-
 // ============================================================================
 // Log Analytics Workspace (for App Insights)
 // ============================================================================
@@ -210,7 +207,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
 // ============================================================================
 resource webApp 'Microsoft.Web/staticSites@2023-01-01' = {
   name: '${prefix}-web-${uniqueSuffix}'
-  location: location
+  location: 'eastus2'
   sku: {
     name: 'Free'
     tier: 'Free'
@@ -238,34 +235,7 @@ resource mapsAccount 'Microsoft.Maps/accounts@2023-06-01' = {
 // ============================================================================
 // Azure AI Services (for Content Safety + GPT-4o)
 // ============================================================================
-resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
-  name: '${prefix}-ai-${uniqueSuffix}'
-  location: location
-  kind: 'OpenAI'
-  sku: {
-    name: 'S0'
-  }
-  properties: {
-    customSubDomainName: '${prefix}-ai-${uniqueSuffix}'
-    publicNetworkAccess: 'Enabled'
-  }
-}
 
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = {
-  parent: aiServices
-  name: 'gpt-4o'
-  sku: {
-    name: 'Standard'
-    capacity: 10
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'gpt-4o'
-      version: '2024-05-13'
-    }
-  }
-}
 
 resource contentSafety 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
   name: '${prefix}-safety-${uniqueSuffix}'
@@ -300,5 +270,4 @@ output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
 output functionAppUrl string = 'https://${functionApp.properties.defaultHostName}'
 output keyVaultName string = keyVault.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostname}'
-output aiEndpoint string = aiServices.properties.endpoint
 output mapsAccountName string = mapsAccount.name

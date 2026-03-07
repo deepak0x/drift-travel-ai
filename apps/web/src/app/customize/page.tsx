@@ -8,8 +8,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTrip } from "@/lib/store";
-import BudgetTracker from "@/components/BudgetTracker";
-import PlannerChat from "@/components/PlannerChat";
+import BudgetTracker from "@/components/budget-tracker";
+import PlannerChat from "@/components/planner-chat";
 
 type Tab = "cities" | "experiences" | "hotels" | "flights";
 
