@@ -1,0 +1,24 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "python",
+        "COSMOS_ENDPOINT": "https://your-cosmos.documents.azure.com:443/",
+        "COSMOS_KEY": "your_cosmos_key_here",
+        "COSMOS_DATABASE": "drift-db",
+        "OPENAI_API_KEY": "your_openai_key_here",
+        "OPENAI_API_BASE": "https://your-ai.openai.azure.com/",
+        "OPENAI_DEPLOYMENT": "gpt-4o",
+        "AMADEUS_API_KEY": "your_amadeus_key_here",
+        "AMADEUS_API_SECRET": "your_amadeus_secret_here",
+        "OPENTRIPMAP_API_KEY": "your_opentripmap_key_here",
+        "STRIPE_SECRET_KEY": "sk_test_your_stripe_key_here",
+        "AZURE_CONTENT_SAFETY_ENDPOINT": "https://your-safety.cognitiveservices.azure.com/",
+        "AZURE_CONTENT_SAFETY_KEY": "your_content_safety_key_here",
+        "KEY_VAULT_URL": "https://drift-kv.vault.azure.net/"
+    },
+    "Host": {
+        "CORS": "*",
+        "CORSCredentials": false
+    }
+}
