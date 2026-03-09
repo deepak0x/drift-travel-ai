@@ -6,7 +6,7 @@
 targetScope = 'subscription'
 
 @description('Azure region for all resources')
-param location string = 'eastus2'
+param location string = 'southeastasia'
 
 @description('Environment name')
 @allowed(['dev', 'staging', 'prod'])

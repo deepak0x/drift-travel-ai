@@ -54,7 +54,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableRbacAuthorization: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
-    enablePurgeProtection: false
+    enablePurgeProtection: true
   }
 }
 
@@ -207,7 +207,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
 // ============================================================================
 resource webApp 'Microsoft.Web/staticSites@2023-01-01' = {
   name: '${prefix}-web-${uniqueSuffix}'
-  location: 'eastus2'
+  location: 'eastasia'
   sku: {
     name: 'Free'
     tier: 'Free'
