@@ -14,6 +14,35 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# Fallback city → IATA code map (used when planner returns null iataCode)
+CITY_IATA: dict[str, str] = {
+    "goa": "GOI", "mumbai": "BOM", "delhi": "DEL", "bangalore": "BLR",
+    "bengaluru": "BLR", "hyderabad": "HYD", "chennai": "MAA", "kolkata": "CCU",
+    "ahmedabad": "AMD", "pune": "PNQ", "jaipur": "JAI", "kochi": "COK",
+    "cochin": "COK", "lucknow": "LKO", "chandigarh": "IXC", "bhopal": "BHO",
+    "varanasi": "VNS", "udaipur": "UDR", "amritsar": "ATQ", "nagpur": "NAG",
+    "tokyo": "TYO", "osaka": "OSA", "kyoto": "ITM", "paris": "CDG",
+    "london": "LHR", "dubai": "DXB", "singapore": "SIN", "bangkok": "BKK",
+    "new york": "JFK", "los angeles": "LAX", "sydney": "SYD", "bali": "DPS",
+    "phuket": "HKT", "istanbul": "IST", "rome": "FCO", "barcelona": "BCN",
+    "amsterdam": "AMS", "berlin": "BER", "toronto": "YYZ", "kuala lumpur": "KUL",
+}
+
+# Fallback city → (lat, lng)
+CITY_COORDS: dict[str, tuple[float, float]] = {
+    "goa": (15.2993, 74.1240), "mumbai": (19.0760, 72.8777),
+    "delhi": (28.6139, 77.2090), "bangalore": (12.9716, 77.5946),
+    "bengaluru": (12.9716, 77.5946), "hyderabad": (17.3850, 78.4867),
+    "chennai": (13.0827, 80.2707), "kolkata": (22.5726, 88.3639),
+    "jaipur": (26.9124, 75.7873), "kochi": (9.9312, 76.2673),
+    "varanasi": (25.3176, 82.9739), "udaipur": (24.5854, 73.7125),
+    "tokyo": (35.6762, 139.6503), "osaka": (34.6937, 135.5023),
+    "paris": (48.8566, 2.3522), "london": (51.5074, -0.1278),
+    "dubai": (25.2048, 55.2708), "singapore": (1.3521, 103.8198),
+    "bangkok": (13.7563, 100.5018), "bali": (-8.3405, 115.0920),
+    "phuket": (7.8804, 98.3923),
+}
+
 
 class RetrieverAgent:
     """
@@ -31,6 +60,15 @@ class RetrieverAgent:
         self.amadeus_base_url = "https://test.api.amadeus.com"
         self.foursquare_base_url = "https://api.foursquare.com/v3"
         self._amadeus_token: Optional[str] = None
+
+    def _resolve_city(self, city: dict[str, Any]) -> tuple[str, float, float]:
+        """Return (iata_code, lat, lng) resolving nulls via lookup maps."""
+        city_name = (city.get("cityName") or "").lower().strip()
+        iata = city.get("iataCode") or CITY_IATA.get(city_name, "")
+        loc = city.get("location") or {}
+        lat = float(loc.get("lat") or 0) or CITY_COORDS.get(city_name, (0, 0))[0]
+        lng = float(loc.get("lng") or 0) or CITY_COORDS.get(city_name, (0, 0))[1]
+        return iata, lat, lng
 
     # =========================================================================
     # Public API
@@ -63,17 +101,18 @@ class RetrieverAgent:
 
             for i, city in enumerate(cities):
                 city_name = city.get("cityName", "")
-                iata_code = city.get("iataCode", "")
+                iata_code, lat, lng = self._resolve_city(city)
                 arrival = city.get("arrivalDate", start_date)
                 departure = city.get("departureDate", end_date)
 
                 # Fetch flights (between cities)
                 if i < len(cities) - 1:
                     next_city = cities[i + 1]
+                    next_iata, _, _ = self._resolve_city(next_city)
                     flights = await self._search_flights(
                         client=client,
                         origin=iata_code,
-                        destination=next_city.get("iataCode", ""),
+                        destination=next_iata,
                         date=departure,
                         travelers=travelers,
                         currency=currency,
@@ -81,19 +120,18 @@ class RetrieverAgent:
                     results["flights"].extend(flights)
 
                 # Fetch hotels
-                hotels = await self._search_hotels(
-                    client=client,
-                    city_code=iata_code,
-                    check_in=arrival,
-                    check_out=departure,
-                    travelers=travelers,
-                    currency=currency,
-                )
-                results["hotels"].extend(hotels)
+                if iata_code:
+                    hotels = await self._search_hotels(
+                        client=client,
+                        city_code=iata_code,
+                        check_in=arrival,
+                        check_out=departure,
+                        travelers=travelers,
+                        currency=currency,
+                    )
+                    results["hotels"].extend(hotels)
 
                 # Fetch experiences
-                lat = city.get("location", {}).get("lat", 0)
-                lng = city.get("location", {}).get("lng", 0)
                 if lat and lng:
                     experiences = await self._search_experiences(
                         client=client,
@@ -136,20 +174,20 @@ class RetrieverAgent:
 
             for i, city in enumerate(cities):
                 city_name = city.get("cityName", "Unknown")
-                iata_code = city.get("iataCode", "")
+                iata_code, lat, lng = self._resolve_city(city)
                 arrival = city.get("arrivalDate", start_date)
                 departure = city.get("departureDate", end_date)
 
                 # Flights
                 if i < len(cities) - 1:
                     next_city = cities[i + 1]
+                    next_iata, _, _ = self._resolve_city(next_city)
                     yield self._event(
                         "searching", "retriever",
                         f"✈️ Searching flights: {city_name} → {next_city.get('cityName', '')}..."
                     )
                     flights = await self._search_flights(
-                        client, iata_code,
-                        next_city.get("iataCode", ""),
+                        client, iata_code, next_iata,
                         departure, travelers, currency,
                     )
                     results["flights"].extend(flights)
@@ -164,9 +202,12 @@ class RetrieverAgent:
                     "searching", "retriever",
                     f"🏨 Searching hotels in {city_name}..."
                 )
-                hotels = await self._search_hotels(
-                    client, iata_code, arrival, departure, travelers, currency,
-                )
+                if iata_code:
+                    hotels = await self._search_hotels(
+                        client, iata_code, arrival, departure, travelers, currency,
+                    )
+                else:
+                    hotels = []
                 results["hotels"].extend(hotels)
                 yield self._event(
                     "found", "retriever",
@@ -175,8 +216,6 @@ class RetrieverAgent:
                 )
 
                 # Experiences
-                lat = city.get("location", {}).get("lat", 0)
-                lng = city.get("location", {}).get("lng", 0)
                 if lat and lng:
                     yield self._event(
                         "searching", "retriever",
