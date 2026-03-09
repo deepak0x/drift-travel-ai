@@ -91,11 +91,10 @@ class PlannerAgent:
                 ],
                 temperature=0.7,
                 max_tokens=4096,
-                response_format={"type": "json_object"},
             )
 
-            content = response.choices[0].message.content
-            itinerary = json.loads(content)
+            content = response.choices[0].message.content or ""
+            itinerary = self._parse_json(content)
 
             # Add metadata
             itinerary["id"] = str(uuid.uuid4())
@@ -105,7 +104,6 @@ class PlannerAgent:
             safety_result = await self.safety.check_text(content)
             if not safety_result["safe"]:
                 logger.warning(f"Content safety flag: {safety_result['reason']}")
-                # Still return but add warning
                 itinerary["_safetyWarning"] = safety_result["reason"]
 
             logger.info(f"Itinerary generated: {itinerary.get('summary', 'N/A')}")
@@ -164,11 +162,10 @@ class PlannerAgent:
                 ],
                 temperature=0.7,
                 max_tokens=4096,
-                response_format={"type": "json_object"},
             )
 
-            content = response.choices[0].message.content
-            result = json.loads(content)
+            content = response.choices[0].message.content or ""
+            result = self._parse_json(content)
 
             return {
                 "itinerary": result,
@@ -215,3 +212,41 @@ estimated costs, and proper timing. Consider travel between cities if
 the destination spans multiple cities. Respond ONLY with the JSON object."""
 
         return prompt
+
+    @staticmethod
+    def _parse_json(content: str) -> dict:
+        """Robustly parse JSON from LLM output.
+
+        Handles all of these patterns GitHub Models may return:
+          1. Raw JSON: {"key": ...}
+          2. Markdown fenced: ```json\n{...}\n```
+          3. Text before JSON: "Here is your itinerary:\n```json\n{...}\n```"
+          4. Text before bare JSON: "Sure! Here:\n{...}"
+        """
+        text = content.strip()
+
+        # Fast path: already valid JSON
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Strip markdown code fences (```json ... ``` or ``` ... ```)
+        import re
+        fence_match = re.search(r"```(?:json)?\s*\n([\s\S]*?)\n```", text)
+        if fence_match:
+            try:
+                return json.loads(fence_match.group(1).strip())
+            except json.JSONDecodeError:
+                pass
+
+        # Last resort: find the outermost { ... } block
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        raise json.JSONDecodeError("No valid JSON found in LLM response", text, 0)
