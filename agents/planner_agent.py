@@ -1,6 +1,7 @@
 """
 DRIFT — Planner Agent
-Generates structured travel itineraries using Azure OpenAI GPT-4o.
+Generates structured travel itineraries using GitHub Models (GPT-4o).
+Compatible with any OpenAI-spec endpoint (Azure, GitHub, OpenAI direct).
 Supports initial generation and chat-based modifications.
 """
 
@@ -9,7 +10,7 @@ import logging
 import uuid
 from typing import Any, Optional
 
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 
 from agents.prompts import PLANNER_SYSTEM_PROMPT, PLANNER_MODIFICATION_PROMPT
 from agents.content_safety import ContentSafety
@@ -23,12 +24,19 @@ class PlannerAgent:
     def __init__(self) -> None:
         import os
 
-        self.client = AsyncAzureOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-            api_version="2024-06-01",
-            azure_endpoint=os.environ.get("OPENAI_API_BASE", ""),
+        # GitHub Models is OpenAI-API-compatible — just point base_url to their endpoint.
+        # Falls back to official OpenAI if OPENAI_API_BASE is not set.
+        api_key = os.environ.get("OPENAI_API_KEY", "")
+        base_url = os.environ.get(
+            "OPENAI_API_BASE", "https://models.github.ai/inference"
         )
-        self.deployment = os.environ.get("OPENAI_DEPLOYMENT", "gpt-4o")
+
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+        )
+        # GitHub Models uses "gpt-4o" model name directly (no deployment prefix needed)
+        self.deployment = os.environ.get("OPENAI_DEPLOYMENT", "openai/gpt-4o")
         self.safety = ContentSafety()
 
     async def generate_itinerary(
