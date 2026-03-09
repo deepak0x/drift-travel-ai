@@ -19,7 +19,7 @@ class RetrieverAgent:
     """
     AI agent that retrieves travel options from external APIs:
     - Amadeus: Flights + Hotels
-    - OpenTripMap: Experiences / Points of Interest
+    - Foursquare Places API: Experiences / Points of Interest
     """
 
     def __init__(self) -> None:
@@ -27,9 +27,9 @@ class RetrieverAgent:
 
         self.amadeus_key = os.environ.get("AMADEUS_API_KEY", "")
         self.amadeus_secret = os.environ.get("AMADEUS_API_SECRET", "")
-        self.opentripmap_key = os.environ.get("OPENTRIPMAP_API_KEY", "")
+        self.foursquare_key = os.environ.get("FOURSQUARE_API_KEY", "")
         self.amadeus_base_url = "https://test.api.amadeus.com"
-        self.opentripmap_base_url = "https://api.opentripmap.com/0.1/en"
+        self.foursquare_base_url = "https://api.foursquare.com/v3"
         self._amadeus_token: Optional[str] = None
 
     # =========================================================================
@@ -383,55 +383,62 @@ class RetrieverAgent:
         lng: float,
         city_name: str,
     ) -> list[dict[str, Any]]:
-        """Search experiences via OpenTripMap."""
-        if not self.opentripmap_key:
+        """Search experiences via Foursquare Places API."""
+        if not self.foursquare_key:
             return self._mock_experiences(city_name, lat, lng)
 
         try:
             resp = await client.get(
-                f"{self.opentripmap_base_url}/places/radius",
+                f"{self.foursquare_base_url}/places/search",
                 params={
-                    "radius": 10000,
-                    "lon": lng,
-                    "lat": lat,
-                    "format": "json",
+                    "ll": f"{lat},{lng}",
+                    "radius": 10000,       # 10km
                     "limit": 15,
-                    "rate": "3h",  # Minimum 3-star rating
-                    "apikey": self.opentripmap_key,
+                    "sort": "RATING",
+                    "categories": "10000,16000,13000,17000,18000",  # arts,landmarks,food,outdoors,shopping
+                },
+                headers={
+                    "Authorization": self.foursquare_key,
+                    "Accept": "application/json",
                 },
             )
             resp.raise_for_status()
-            places = resp.json()
+            places = resp.json().get("results", [])
 
             experiences = []
             for place in places:
                 if not place.get("name"):
                     continue
 
-                # Map OpenTripMap kinds to our categories
-                kinds = place.get("kinds", "")
-                category = self._map_category(kinds)
+                # Map Foursquare category IDs to DRIFT categories
+                categories = place.get("categories", [])
+                category = self._map_foursquare_category(categories)
+
+                geocodes = place.get("geocodes", {}).get("main", {})
+                location = place.get("location", {})
 
                 experiences.append({
                     "id": str(uuid.uuid4()),
                     "name": place.get("name", ""),
-                    "description": "",  # Need detail call for full description
+                    "description": f"{place.get('name', '')} — {category.title()} in {city_name}",
                     "category": category,
                     "location": {
-                        "lat": place.get("point", {}).get("lat", lat),
-                        "lng": place.get("point", {}).get("lon", lng),
+                        "lat": geocodes.get("latitude", lat),
+                        "lng": geocodes.get("longitude", lng),
                     },
-                    "rating": place.get("rate", 3),
-                    "estimatedCost": 0,
-                    "duration": "1-2 hours",
+                    "address": location.get("formatted_address", location.get("address", "")),
+                    "rating": round(place.get("rating", 8.0) / 2, 1),  # Foursquare 0–10 → 0–5
+                    "estimatedCost": int(place.get("price", 2)) * 200,  # 1–4 scale → INR approx
+                    "duration": "1-3 hours",
                     "city": city_name,
+                    "fsqId": place.get("fsq_id", ""),
                     "selected": False,
                 })
 
             return experiences
 
         except Exception as e:
-            logger.error(f"Experience search error: {e}")
+            logger.error(f"Foursquare experience search error: {e}")
             return self._mock_experiences(city_name, lat, lng)
 
     # =========================================================================
@@ -461,19 +468,26 @@ class RetrieverAgent:
 
         return results
 
-    def _map_category(self, kinds: str) -> str:
-        """Map OpenTripMap 'kinds' to DRIFT experience categories."""
-        kinds_lower = kinds.lower()
-        if any(k in kinds_lower for k in ["museum", "historic", "monument"]):
+    def _map_foursquare_category(self, categories: list[dict[str, Any]]) -> str:
+        """Map Foursquare category objects to DRIFT experience categories."""
+        if not categories:
+            return "sightseeing"
+        # Use first category's ID
+        cat_id = str(categories[0].get("id", ""))
+        name = categories[0].get("name", "").lower()
+
+        if cat_id.startswith("10") or "art" in name or "museum" in name:
             return "culture"
-        if any(k in kinds_lower for k in ["natural", "garden", "park"]):
-            return "nature"
-        if any(k in kinds_lower for k in ["sport", "amusement"]):
-            return "adventure"
-        if any(k in kinds_lower for k in ["food", "restaurant", "cafe"]):
+        if cat_id.startswith("16") or "landmark" in name or "monument" in name:
+            return "sightseeing"
+        if cat_id.startswith("13") or "food" in name or "restaurant" in name or "cafe" in name:
             return "food"
-        if any(k in kinds_lower for k in ["shop", "market"]):
+        if cat_id.startswith("17") or "park" in name or "garden" in name or "nature" in name:
+            return "nature"
+        if cat_id.startswith("18") or "shop" in name or "market" in name:
             return "shopping"
+        if "sport" in name or "adventure" in name or "trek" in name:
+            return "adventure"
         return "sightseeing"
 
     def _event(
