@@ -33,25 +33,48 @@ export default function PlannerChat() {
         setInput("");
         setIsTyping(true);
 
-        // Simulate AI response (replace with real API call)
-        setTimeout(() => {
-            const responses = [
-                "I've updated the itinerary based on your request! The changes are reflected in the plan above.",
-                "Great idea! I've moved the activities around and adjusted the timing. Check the itinerary tab for the updated schedule.",
-                "Done! I've added that to your plan and recalculated the budget. You still have room in your budget for more activities.",
-                "I've swapped those experiences out. The new activities better match your preference. Take a look!",
-            ];
+        // Call real API
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:7071/api";
+            const response = await fetch(`${apiUrl}/chat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: input.trim(),
+                    itinerary: state.itinerary,
+                    chatHistory: state.chatMessages,
+                }),
+            });
 
-            const aiMsg: ChatMessage = {
-                id: `msg-${Date.now()}-ai`,
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                const aiMsg: ChatMessage = {
+                    id: `msg-${Date.now()}-ai`,
+                    role: "assistant",
+                    content: data.data.response || "Itinerary updated!",
+                    timestamp: new Date().toISOString(),
+                };
+                dispatch({ type: "ADD_CHAT_MESSAGE", payload: aiMsg });
+
+                if (data.data.modified && data.data.itinerary) {
+                    dispatch({ type: "SET_ITINERARY", payload: data.data.itinerary });
+                }
+            } else {
+                throw new Error(data.error || "Failed to modify itinerary");
+            }
+        } catch (error) {
+            console.error("Chat error:", error);
+            const errorMsg: ChatMessage = {
+                id: `msg-${Date.now()}-error`,
                 role: "assistant",
-                content: responses[Math.floor(Math.random() * responses.length)],
+                content: "Sorry, I couldn't reach the Planner Agent to update your itinerary.",
                 timestamp: new Date().toISOString(),
             };
-
-            dispatch({ type: "ADD_CHAT_MESSAGE", payload: aiMsg });
+            dispatch({ type: "ADD_CHAT_MESSAGE", payload: errorMsg });
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {

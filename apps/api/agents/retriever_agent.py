@@ -323,6 +323,10 @@ class RetrieverAgent:
                         "selected": False,
                     })
 
+            if not flights:
+                logger.warning(f"No flights found from {origin} to {destination}, using mock data")
+                return self._mock_flights(origin, destination, date, travelers, currency)
+
             return flights[:10]
 
         except Exception as e:
@@ -405,6 +409,10 @@ class RetrieverAgent:
                     "selected": False,
                 })
 
+            if not hotels:
+                logger.warning(f"No hotels found in {city_code}, using mock data")
+                return self._mock_hotels(city_code, check_in, check_out, currency)
+
             return hotels
 
         except Exception as e:
@@ -473,6 +481,10 @@ class RetrieverAgent:
                     "fsqId": place.get("fsq_id", ""),
                     "selected": False,
                 })
+
+            if not experiences:
+                logger.warning(f"No experiences found in {city_name}, using mock data")
+                return self._mock_experiences(city_name, lat, lng)
 
             return experiences
 
