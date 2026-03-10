@@ -102,9 +102,9 @@ If the user asks to modify activities in the itinerary, include action items lik
 
 Action types available:
 - "update_day": Update activities for a specific day (include dayNumber, cityName, newTitle, newActivities)
-- "suggest_hotels": Suggest better hotel options (include suggestions: [{name, stars, pricePerNight, reason}])
-- "suggest_flights": Suggest flight options (include suggestions: [{airline, route, price, tip}])
-- "suggest_experiences": Suggest additional experiences (include suggestions: [{name, category, cost, description}])
+- "suggest_hotels": Suggest better hotel options (include suggestions: [{{name, stars, pricePerNight, reason}}])
+- "suggest_flights": Suggest flight options (include suggestions: [{{airline, route, price, tip}}])
+- "suggest_experiences": Suggest additional experiences (include suggestions: [{{name, category, cost, description}}])
 - "budget_tip": Give budget advice (include tip, savings)
 - "info": Just a conversational response with no state changes (leave actions: [])
 
