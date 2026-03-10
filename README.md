@@ -10,18 +10,44 @@ complete travel itineraries — all within a user's budget.
 
 ```
 drift-travel-ai/
-├── apps/
-│   ├── web/                  # Next.js 14 frontend
-│   └── api/                  # Azure Functions (Python)
-├── agents/                   # AI Agent logic
+├── .env
+├── .gitignore
+├── README.md
+├── agents/                   # Core agent logic
+│   ├── content_safety.py
+│   ├── executor_agent.py
 │   ├── planner_agent.py
-│   ├── retriever_agent.py
-│   └── executor_agent.py
-├── infra/
-│   └── main.bicep            # Azure infrastructure
-├── shared/
-│   └── types/                # Shared TypeScript types
-└── docs/
+│   ├── prompts.py
+│   └── retriever_agent.py
+├── apps/
+│   ├── api/                  # Azure Functions (Python)
+│   │   ├── agents/           # Symlinks to core agent logic
+│   │   ├── config.py
+│   │   ├── db.py
+│   │   ├── function_app.py
+│   │   ├── host.json
+│   │   ├── local.settings.template.json
+│   │   └── requirements.txt
+│   └── web/                  # Next.js 14 frontend
+│       ├── .env.local
+│       ├── next.config.ts
+│       ├── package.json
+│       ├── public/
+│       ├── src/
+│       │   ├── app/
+│       │   ├── components/
+│       │   └── lib/
+│       └── tsconfig.json
+├── architecture/
+│   ├── diagram.html
+│   └── diagram.png
+├── infra/                    # Azure Bicep IaC
+│   ├── main.bicep
+│   └── modules/
+│       └── resources.bicep
+└── shared/
+    └── types/                # Shared TypeScript types
+        └── index.ts
 ```
 
 | Layer | Technology |
@@ -76,6 +102,21 @@ az keyvault secret set --vault-name drift-kv --name amadeus-api-key --value YOUR
 az keyvault secret set --vault-name drift-kv --name amadeus-api-secret --value YOUR_SECRET
 az keyvault secret set --vault-name drift-kv --name foursquare-api-key --value YOUR_KEY
 az keyvault secret set --vault-name drift-kv --name stripe-key --value YOUR_KEY
+```
+
+### Deploy to Azure
+
+To deploy the backend to Azure Functions:
+```bash
+cd apps/api
+func azure functionapp publish <your-function-app-name> --python --build remote
+```
+
+To deploy the frontend (example using Azure App Service):
+```bash
+cd apps/web
+npm run build
+az webapp up --name <your-webapp-name> --resource-group <your-resource-group> --html
 ```
 
 ### Run Locally
