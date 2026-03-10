@@ -6,6 +6,8 @@ complete travel itineraries — all within a user's budget.
 
 ## Architecture
 
+![Architecture Diagram](./architecture/diagram.png)
+
 ```
 drift-travel-ai/
 ├── apps/
