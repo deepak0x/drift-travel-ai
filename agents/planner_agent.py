@@ -123,24 +123,29 @@ class PlannerAgent:
         chat_history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """
-        Modify an existing itinerary based on natural language chat.
-
-        Args:
-            message: User's modification request
-            current_itinerary: Current itinerary JSON
-            chat_history: Previous chat messages
+        Chat with the planner agent. Returns a conversational reply + targeted actions.
 
         Returns:
-            Modified itinerary JSON with a chat response
+            {
+                "response": "Friendly reply text...",
+                "actions": [...],   # list of targeted updates
+                "modified": True/False,
+                "itinerary": current_itinerary  # unchanged — frontend applies actions
+            }
         """
         history_text = ""
         if chat_history:
+            # Keep last 6 messages to stay within token budget
+            recent = chat_history[-6:]
             history_text = "\n".join(
-                f"{msg['role'].upper()}: {msg['content']}" for msg in chat_history
+                f"{msg['role'].upper()}: {msg['content']}" for msg in recent
             )
 
+        # Build a compact itinerary summary (not the full JSON — too large)
+        itinerary_summary = self._summarize_itinerary(current_itinerary)
+
         system_prompt = PLANNER_MODIFICATION_PROMPT.format(
-            current_itinerary=json.dumps(current_itinerary, indent=2),
+            current_itinerary=itinerary_summary,
             chat_history=history_text or "No previous messages.",
         )
 
@@ -149,7 +154,8 @@ class PlannerAgent:
         if not input_safety["safe"]:
             return {
                 "itinerary": current_itinerary,
-                "response": "I'm sorry, I can't process that request. Please rephrase.",
+                "response": "I'm sorry, I can't process that request. Please rephrase it.",
+                "actions": [],
                 "modified": False,
             }
 
@@ -160,26 +166,43 @@ class PlannerAgent:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message},
                 ],
-                temperature=0.7,
-                max_tokens=4096,
+                temperature=0.8,
+                max_tokens=1500,  # Much smaller — we only need reply + actions
             )
 
             content = response.choices[0].message.content or ""
+            logger.info(f"Chat response raw: {content[:200]}")
+
             result = self._parse_json(content)
+            reply = result.get("reply", "Got it! Let me help you with that.")
+            actions = result.get("actions", [])
 
             return {
-                "itinerary": result,
-                "response": result.pop("_chatResponse", "Itinerary updated!"),
-                "modified": True,
+                "response": reply,
+                "actions": actions,
+                "itinerary": current_itinerary,  # frontend applies actions from state
+                "modified": len(actions) > 0,
             }
 
-        except Exception as e:
-            logger.error(f"Modification error: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Chat JSON parse error: {e}, content: {content[:300]}")
+            # Fallback: return content as plain reply
+            reply = content.strip() if content.strip() else "I'm here to help! What would you like to change about your trip?"
             return {
+                "response": reply,
+                "actions": [],
                 "itinerary": current_itinerary,
-                "response": f"Sorry, I couldn't apply that change: {str(e)}",
                 "modified": False,
             }
+        except Exception as e:
+            logger.error(f"Chat error: {e}")
+            return {
+                "itinerary": current_itinerary,
+                "response": "Sorry, I had trouble processing that. Try asking me something like: 'Add a beach sunset on day 2' or 'What's the best area to stay in Goa?'",
+                "actions": [],
+                "modified": False,
+            }
+
 
     def _build_user_prompt(
         self,
@@ -250,3 +273,19 @@ the destination spans multiple cities. Respond ONLY with the JSON object."""
                 pass
 
         raise json.JSONDecodeError("No valid JSON found in LLM response", text, 0)
+
+    @staticmethod
+    def _summarize_itinerary(itinerary: dict) -> str:
+        """Build a compact text summary of the itinerary for the chat system prompt."""
+        if not itinerary:
+            return "No itinerary yet."
+        lines = [f"Trip summary: {itinerary.get('summary', 'N/A')}"]
+        for city in itinerary.get("cities", []):
+            lines.append(f"\n{city.get('cityName')} ({city.get('arrivalDate')} → {city.get('departureDate')}):")
+            for day in city.get("days", []):
+                acts = ", ".join(a.get("name", "") for a in day.get("activities", []))
+                lines.append(f"  Day {day.get('dayNumber')}: {day.get('title')} — {acts}")
+        budget = itinerary.get("estimatedBudget", {})
+        if budget:
+            lines.append(f"\nEstimated budget: ₹{budget.get('total', 0):,}")
+        return "\n".join(lines)
