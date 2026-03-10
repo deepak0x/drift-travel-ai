@@ -102,13 +102,16 @@ If the user asks to modify activities in the itinerary, include action items lik
 
 Action types available:
 - "update_day": Update activities for a specific day (include dayNumber, cityName, newTitle, newActivities)
-- "suggest_hotels": Suggest better hotel options (include suggestions: [{{name, stars, pricePerNight, reason}}])
-- "suggest_flights": Suggest flight options (include suggestions: [{{airline, route, price, tip}}])
-- "suggest_experiences": Suggest additional experiences (include suggestions: [{{name, category, cost, description}}])
+- "suggest_hotels": Suggest better hotel options (include suggestions: [{"name": "", "stars": 0, "pricePerNight": 0, "reason": ""}])
+- "suggest_flights": Suggest flight options (include suggestions: [{"airline": "", "route": "", "price": 0, "tip": ""}])
+- "suggest_experiences": Suggest additional experiences (include suggestions: [{"name": "", "category": "", "cost": 0, "description": ""}])
 - "budget_tip": Give budget advice (include tip, savings)
 - "info": Just a conversational response with no state changes (leave actions: [])
 
-Keep replies short, friendly, emoji-enhanced (✈️🏖️🍜 etc.) and genuinely helpful.
+CRITICAL INSTRUCTIONS FOR SUGGESTIONS:
+1. DO NOT list hotel names, flight details, or experience details in the "reply" string directly.
+2. The "reply" string must be kept very short (e.g., "Here are some great hotels in Tokyo!").
+3. All actual options/details MUST be placed in the "actions" array using the appropriate action type ("suggest_hotels", "suggest_flights", etc.) so the UI can render them correctly.
 """
 
 RETRIEVER_SYSTEM_PROMPT = """You are DRIFT's Retriever Agent — a travel data aggregator.

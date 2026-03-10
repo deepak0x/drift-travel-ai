@@ -29,7 +29,6 @@ drift-travel-ai/
 | AI | Azure AI Foundry (GPT-4o) — 3 agents |
 | Database | Azure Cosmos DB (NoSQL) |
 | Secrets | Azure Key Vault |
-| Maps | Azure Maps |
 | Payments | Stripe (test mode) |
 | Guardrails | Azure AI Content Safety |
 
@@ -38,7 +37,7 @@ drift-travel-ai/
 | Agent | Role |
 |-------|------|
 | **Planner Agent** | Creates structured itinerary from user input, handles chat-based edits |
-| **Retriever Agent** | Fetches live flights, hotels (Amadeus), and experiences (OpenTripMap) |
+| **Retriever Agent** | Fetches live flights, hotels (Amadeus), and experiences (Foursquare) |
 | **Executor Agent** | Books travel, processes Stripe payment, generates PDF + QR codes |
 
 ## Getting Started
@@ -51,7 +50,7 @@ drift-travel-ai/
 
 ### Free API Keys Needed
 - [Amadeus](https://developers.amadeus.com) — Flights + Hotels (free test env, 2,000 calls/month)
-- [OpenTripMap](https://opentripmap.io) — Experiences (free tier)
+- [Foursquare](https://location.foursquare.com/) — Experiences (free tier)
 - [Stripe](https://stripe.com) — Payments (test mode, free forever)
 
 ### Setup
@@ -73,7 +72,7 @@ cd ../api && pip install -r requirements.txt
 # Add API keys to Azure Key Vault (never in .env)
 az keyvault secret set --vault-name drift-kv --name amadeus-api-key --value YOUR_KEY
 az keyvault secret set --vault-name drift-kv --name amadeus-api-secret --value YOUR_SECRET
-az keyvault secret set --vault-name drift-kv --name opentripmap-key --value YOUR_KEY
+az keyvault secret set --vault-name drift-kv --name foursquare-api-key --value YOUR_KEY
 az keyvault secret set --vault-name drift-kv --name stripe-key --value YOUR_KEY
 ```
 
@@ -92,7 +91,6 @@ cd apps/web && npm run dev
 Create `apps/web/.env.local`:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:7071/api
-NEXT_PUBLIC_AZURE_MAPS_KEY=your_azure_maps_key
 ```
 
 Create `apps/api/local.settings.json` (already templated in repo):
@@ -107,7 +105,7 @@ Create `apps/api/local.settings.json` (already templated in repo):
     "OPENAI_API_KEY": "your_openai_key",
     "AMADEUS_API_KEY": "your_amadeus_key",
     "AMADEUS_API_SECRET": "your_amadeus_secret",
-    "OPENTRIPMAP_API_KEY": "your_opentripmap_key",
+    "FOURSQUARE_API_KEY": "your_foursquare_key",
     "STRIPE_SECRET_KEY": "your_stripe_test_key",
     "AZURE_CONTENT_SAFETY_ENDPOINT": "your_endpoint",
     "AZURE_CONTENT_SAFETY_KEY": "your_key"
@@ -126,6 +124,12 @@ PII exposure, and off-topic requests.
 - No API keys in code — only Key Vault references
 - Input sanitization before every agent call
 - CORS locked to frontend domain only
+
+## Resilience & Fallbacks
+All LLM JSON outputs are parsed defensively. The `PlannerAgent` includes graceful fallbacks:
+- If the LLM generates conversational text instead of strict JSON (e.g., placing emojis outside JSON blocks), the system intercepts the `JSONDecodeError`.
+- Instead of returning a generic connection fault, it extracts the raw text and seamlessly passes it down as the plain conversational reply.
+- Prompt instructions are strongly typed to output `actions` for UI modifications (like `suggest_hotels`) to prevent chat window clutter.
 
 ## License
 MIT

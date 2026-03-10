@@ -41,13 +41,14 @@ class PlannerAgent:
 
     async def generate_itinerary(
         self,
+        origin: str,
         destination: str,
         start_date: str,
         end_date: str,
         travelers: int = 1,
         budget: float = 100000,
         currency: str = "INR",
-        theme: str = "cultural",
+        themes: list[str] = ["cultural"],
         activity_level: str = "moderate",
         special_requests: Optional[str] = None,
     ) -> dict[str, Any]:
@@ -69,13 +70,14 @@ class PlannerAgent:
             Structured itinerary JSON
         """
         user_prompt = self._build_user_prompt(
+            origin=origin,
             destination=destination,
             start_date=start_date,
             end_date=end_date,
             travelers=travelers,
             budget=budget,
             currency=currency,
-            theme=theme,
+            themes=themes,
             activity_level=activity_level,
             special_requests=special_requests,
         )
@@ -120,7 +122,7 @@ class PlannerAgent:
         self,
         message: str,
         current_itinerary: dict[str, Any],
-        chat_history: list[dict[str, str]] | None = None,
+        chat_history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
         """
         Chat with the planner agent. Returns a conversational reply + targeted actions.
@@ -186,8 +188,8 @@ class PlannerAgent:
 
         except json.JSONDecodeError as e:
             logger.error(f"Chat JSON parse error: {e}, content: {content[:300]}")
-            # Fallback: return content as plain reply
-            reply = content.strip() if content.strip() else "I'm here to help! What would you like to change about your trip?"
+            # Fallback: return content as plain reply since LLM failed to wrap in JSON
+            reply = content.strip() if 'content' in locals() and content.strip() else "I couldn't format that properly. Could you rephrase your request? 🏖️"
             return {
                 "response": reply,
                 "actions": [],
@@ -196,14 +198,13 @@ class PlannerAgent:
             }
         except Exception as e:
             logger.error(f"Chat error: {e}")
+            reply_text = content.strip() if 'content' in locals() and content.strip() else "Sorry, I had trouble connecting. Try asking me something like: 'Add a beach sunset on day 2' or 'What's the best area to stay in Goa?'"
             return {
                 "itinerary": current_itinerary,
-                "response": "Sorry, I had trouble processing that. Try asking me something like: 'Add a beach sunset on day 2' or 'What's the best area to stay in Goa?'",
+                "response": reply_text,
                 "actions": [],
                 "modified": False,
             }
-
-
     def _build_user_prompt(
         self,
         origin: str,
