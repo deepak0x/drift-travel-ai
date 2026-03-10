@@ -731,34 +731,140 @@ class RetrieverAgent:
             })
         return hotels
 
+    _CITY_EXPERIENCES: dict[str, list[tuple]] = {
+        # (name, category, cost_inr, duration, description, lat_offset, lng_offset)
+        "goa": [
+            ("Dudhsagar Waterfalls Trek", "nature", 800, "6 hours", "Trek through lush forest to India's tallest waterfall cascading 310m into a blue pool.", 0.3, 0.6),
+            ("Old Goa Heritage Walk", "culture", 0, "3 hours", "Explore UNESCO-listed baroque churches including Basilica of Bom Jesus and Sé Cathedral.", 0.05, -0.1),
+            ("Spice Plantation Tour", "nature", 600, "3 hours", "Wander a working spice farm, taste local spices, and enjoy a traditional Goan lunch.", 0.15, 0.2),
+            ("Fontainhas Latin Quarter Walk", "culture", 0, "2 hours", "Stroll through Goa's colourful Portuguese quarter with tiled facades and bougainvillea.", 0.02, -0.05),
+            ("Sunset Dolphin Cruise", "sightseeing", 1200, "2 hours", "Spot playful dolphins in the Arabian Sea while watching a spectacular sunset.", -0.1, -0.2),
+            ("Goan Cooking Class", "food", 1500, "3 hours", "Learn to cook authentic Goan dishes: prawn balchão, fish curry, and bebinca from scratch.", 0.01, 0.03),
+            ("Anjuna Flea Market", "shopping", 0, "3 hours", "Browse eclectic stalls selling boho jewellery, handloomed textiles, and local handicrafts.", -0.05, -0.3),
+            ("Night Kayaking on Chapora River", "adventure", 1500, "2 hours", "Glide through bioluminescent waters of the Chapora river under a star-lit sky.", 0.2, 0.1),
+            ("Baga Beach Sunset & Shacks", "nightlife", 400, "3 hours", "Enjoy fish thali, local feni, and live music at Goa's legendary beachside shacks.", -0.15, -0.25),
+            ("Yoga & Meditation at Arambol", "wellness", 700, "1.5 hours", "Join a sunrise yoga class on the clifftop overlooking the sea at hippie haven Arambol.", 0.4, -0.1),
+        ],
+        "tokyo": [
+            ("Tsukiji Outer Market Food Tour", "food", 2500, "3 hours", "Taste the freshest sushi, tamagoyaki and street seafood at the world's most famous fish market.", 0.01, 0.02),
+            ("Senso-ji Temple & Nakamise Walk", "culture", 0, "2 hours", "Visit Tokyo's oldest temple in Asakusa and shop traditional crafts along the 200-store arcade.", 0.04, -0.03),
+            ("teamLab Borderless Digital Art", "sightseeing", 3200, "3 hours", "Immerse yourself in ever-changing digital art that responds to your movement.", -0.02, 0.05),
+            ("Shibuya Crossing & Harajuku", "sightseeing", 0, "3 hours", "Cross the world's busiest pedestrian crossing then explore Tokyo's quirky fashion district.", -0.05, -0.02),
+            ("Sumo Tournament or Stable Visit", "culture", 1800, "2 hours", "Watch Japan's ancient sport up-close or visit a practice session at an official stable.", 0.06, 0.01),
+            ("Odaiba Waterfront & Teamlab Planets", "sightseeing", 3000, "4 hours", "Explore a futuristic waterfront island with tech museums, hot springs view of Rainbow Bridge.", -0.08, 0.1),
+            ("Meiji Jingu Forest & Yoyogi Park", "nature", 0, "2 hours", "Stroll through 70 hectares of sacred woodland surrounding Japan's most iconic Shinto shrine.", 0.07, -0.08),
+            ("Kaiseki Dinner in Ginza", "food", 5000, "2.5 hours", "Savor a multi-course traditional Japanese dinner with seasonal ingredients at Ginza's top restaurants.", -0.01, 0.06),
+            ("Golden Gai & Shinjuku Night Walk", "nightlife", 1500, "3 hours", "Explore tiny noir bars in Shinjuku's labyrinthine Golden Gai alley, each with its own theme.", -0.03, -0.04),
+            ("Mt Takao Day Hike", "adventure", 500, "6 hours", "Hike the iconic Mt Takao (599m) through cedar forests with views of Mt Fuji on clear days.", 0.15, 0.3),
+        ],
+        "osaka": [
+            ("Dotonbori Street Food Walk", "food", 1800, "3 hours", "Feast on takoyaki, okonomiyaki & fresh kaiten sushi along Osaka's neon-lit canal district.", 0.01, -0.01),
+            ("Osaka Castle & Nishinomaru Garden", "culture", 600, "3 hours", "Explore the iconic white castle, traverse a moat and relax in 600 cherry blossom trees.", 0.05, 0.04),
+            ("Kuromon Ichiba Market", "food", 1000, "2 hours", "'Osaka's Kitchen' — 180 stalls of fresh wagyu, tuna, blowfish and seasonal produce.", 0.02, -0.02),
+            ("Shinsekai Retro District Tour", "culture", 300, "2 hours", "Walk through the 1912-inspired neighbourhood famous for kushikatsu restaurants and Tsutenkaku Tower.", -0.02, 0.02),
+            ("Universal Studios Japan", "adventure", 8500, "8 hours", "Experience Wizarding World of Harry Potter and Super Nintendo World in Osaka's theme park.", -0.1, -0.15),
+            ("Minami Night Walk & Karaoke", "nightlife", 2000, "3 hours", "Experience Osaka's party district — neon lanterns, street performers and late-night karaoke.", -0.01, -0.03),
+            ("Arashiyama Bamboo Ritual Day Trip", "nature", 1200, "6 hours", "Day trip to Kyoto's most photographed grove with temple gardens and a peaceful monkey park.", 0.2, 0.4),
+            ("Tea Ceremony at Sumiyoshi Shrine", "culture", 1500, "2 hours", "Participate in a traditional matcha tea ceremony at Sumiyoshi Taisha's 1800-year-old shrine.", 0.07, -0.05),
+            ("Spa World Osaka", "wellness", 2800, "3 hours", "Soak in 11 types of hot springs themed across European and Asian bathing cultures.", -0.03, 0.01),
+            ("Tempozan Giant Ferris Wheel & Aquarium", "sightseeing", 2200, "3 hours", "Ride Japan's largest Ferris wheel then explore Kaiyukan — one of the world's largest aquariums.", -0.06, -0.08),
+        ],
+        "kyoto": [
+            ("Fushimi Inari Shrine Trail Hike", "nature", 0, "4 hours", "Hike through 10,000 vermillion torii gates winding across a sacred mountain.", 0.05, 0.06),
+            ("Arashiyama Bamboo Grove & Tenryu-ji", "nature", 500, "3 hours", "Walk through the ethereal bamboo forest and tour the famous Zen garden of Tenryu-ji temple.", 0.1, -0.1),
+            ("Geisha District Evening Walk (Gion)", "culture", 0, "2 hours", "Wander Gion's stone-paved lanes and spot maiko (apprentice geisha) heading to teahouses.", 0.02, 0.01),
+            ("Nishiki Market Food Tasting", "food", 1200, "2 hours", "Taste pickles, tofu, fresh mochi, and Kyoto-style street food at the 400-year-old food market.", -0.01, -0.02),
+            ("Traditional Tea Ceremony (Uji)", "wellness", 1800, "2 hours", "Practice the ancient art of matcha preparation in a tatami room with a Zen master.", 0.15, 0.2),
+            ("Kinkaku-ji Golden Pavilion & Ryoan-ji", "sightseeing", 600, "3 hours", "Behold Japan's most photographed golden temple then contemplate the famous Ryoan-ji rock garden.", 0.08, -0.05),
+            ("Sake Tasting in Fushimi District", "food", 1500, "2 hours", "Sample award-winning sake from 40 breweries in Kyoto's historic sake-brewing district.", 0.06, 0.08),
+            ("Cycling the Philosopher's Path", "adventure", 400, "2 hours", "Cycle along the canal-side path passing 1,000 cherry trees and quiet neighborhood temples.", 0.03, -0.04),
+            ("Noh or Kabuki Performance", "culture", 2000, "3 hours", "Watch a classical Japanese theatre performance, one of UNESCO's Intangible Cultural Heritages.", -0.01, 0.03),
+            ("Kurama Onsen Day Trip", "wellness", 1200, "5 hours", "Soak in open-air hot spring baths surrounded by forested mountains north of Kyoto.", 0.3, -0.2),
+        ],
+        "mumbai": [
+            ("Dharavi Slum Insight Walk", "culture", 800, "3 hours", "Guided community tour of Asia's largest informal economy — recycling hubs, bakeries, and leather co-ops.", 0.02, -0.02),
+            ("Gateway of India & Elephanta Caves", "culture", 600, "5 hours", "Boat across Mumbai Harbour to explore 7th-century rock-cut Shiva temples on Elephanta Island.", -0.03, 0.08),
+            ("Colaba Causeway Street Shopping", "shopping", 0, "3 hours", "Hunt for antiques, silver jewellery, handicrafts and Bollywood posters in South Mumbai's chic market.", -0.05, -0.01),
+            ("Bollywood Studio Tour", "culture", 1800, "4 hours", "Go behind the scenes at Film City — one of the world's largest film production complexes.", 0.1, 0.01),
+            ("Marine Drive Sunset Walk", "sightseeing", 0, "2 hours", "Stroll the iconic 'Queen's Necklace' promenade watching the sun sink into the Arabian Sea.", -0.04, -0.05),
+            ("Kala Ghoda Art District", "culture", 0, "3 hours", "Explore galleries, street art, heritage buildings, and the annual Kala Ghoda Arts Festival.", -0.02, -0.03),
+            ("Chhatrapati Shivaji Terminus Tour", "sightseeing", 0, "1 hour", "Admire UNESCO's crown jewel of Victorian Gothic architecture fused with Indian decorative art.", -0.01, 0.01),
+            ("Juhu Beach Bhel Puri & Sunset", "food", 300, "2 hours", "Eat street snacks — pani puri, bhel, pav bhaji — at the famous Juhu Beach promenade.", 0.08, -0.06),
+            ("Bandstand Promenade & Bandra Village", "sightseeing", 0, "3 hours", "Walk by sea-facing bungalows of Bollywood stars and explore Bandra's hip cafes and street art.", 0.07, -0.07),
+            ("Hammam Spa at Taj Colaba", "wellness", 5000, "2 hours", "Indulge in a traditional hammam treatment at the iconic Taj Mahal Palace hotel spa.", -0.03, -0.01),
+        ],
+        "delhi": [
+            ("Old Delhi Heritage Walk & Jama Masjid", "culture", 0, "4 hours", "Explore the labyrinthine lanes of Chandni Chowk, India's oldest market, ending at a Mughal mosque.", 0.02, -0.03),
+            ("Humayun's Tomb & Sunder Nursery", "sightseeing", 600, "3 hours", "Visit the Mughal masterpiece that inspired the Taj Mahal set within a 90-acre heritage park.", 0.04, 0.05),
+            ("Qutb Minar & Archaeological Park", "culture", 600, "2 hours", "Explore India's tallest brick minaret surrounded by medieval Islamic architecture ruins.", -0.05, -0.08),
+            ("Hauz Khas Village & Lake", "food", 0, "3 hours", "Mumbai-style urban village with cafes, indie boutiques, rooftop restaurants, and a medieval fort.", -0.08, -0.06),
+            ("Red Fort Sound & Light Show", "culture", 200, "1.5 hours", "Dramatic evening show narrating 1,000 years of Delhi's history at the majestic Mughal citadel.", 0.03, -0.02),
+            ("Incredible India Cooking Class", "food", 1500, "3 hours", "Learn to make butter chicken, dal makhani, and kulfi from a Delhi home chef.", 0.01, 0.01),
+            ("Lotus Temple & Akshardham", "sightseeing", 0, "3 hours", "Visit the stunning marble Bahá'í temple and the opulent Swaminarayan temple with water shows.", 0.06, 0.07),
+            ("Mehrauli Village Walk", "culture", 800, "3 hours", "Hidden heritage trail through 1,000-year-old ruins, stepwells and the tomb of Adham Khan.", -0.04, -0.1),
+            ("Connaught Place Bar Hop", "nightlife", 1500, "3 hours", "Bar crawl through CP's top rooftop bars — from Farzi Café to The Beer Café.", -0.02, -0.01),
+            ("Yoga at Lodhi Art District", "wellness", 600, "1.5 hours", "Open-air yoga session surrounded by stunning street murals in Delhi's outdoor art gallery.", 0.05, 0.03),
+        ],
+        "paris": [
+            ("Eiffel Tower Nighttime Visit", "sightseeing", 2800, "2 hours", "Watch Paris glitter from the top of the iron lady as it sparkles every hour after dark.", 0.01, -0.03),
+            ("Louvre Museum Highlights Tour", "culture", 1800, "3 hours", "Skip-the-line access to the Mona Lisa, Venus de Milo, and Winged Victory with an expert guide.", 0.03, 0.01),
+            ("Montmartre Art Village Walk", "culture", 0, "3 hours", "Wander the bohemian hilltop village where Renoir, Picasso and Van Gogh lived and painted.", 0.04, -0.04),
+            ("Seine River Cruise at Sunset", "sightseeing", 1500, "1.5 hours", "Float past Notre-Dame, the Musée d'Orsay, and the Eiffel Tower on a golden-hour river cruise.", -0.01, -0.01),
+            ("Le Marais Food & Wine Tasting", "food", 3500, "3 hours", "Sample fromage bleu, charcuterie, croissants, and Champagne in Paris's trendiest neighbourhood.", 0.02, 0.02),
+            ("Versailles Palace & Gardens", "culture", 3000, "6 hours", "Explore the Hall of Mirrors and strolling through 800 hectares of manicured gardens.", 0.1, 0.2),
+            ("Belleville Street Art Walk", "culture", 0, "2 hours", "Discover Paris's most vibrant neighbourhood overflowing with world-class murals and multicultural food.", 0.05, 0.05),
+            ("French Cooking Class at Le Cordon Bleu", "food", 8000, "4 hours", "Master croissant and boeuf bourguignon techniques at the world's most prestigious culinary school.", -0.02, 0.03),
+            ("Marché aux Puces Flea Market", "shopping", 0, "4 hours", "Europe's largest flea market — Louis Vuitton vintage, art deco lamps, and mid-century furniture.", 0.07, -0.06),
+            ("Champagne Cave & Tasting", "wellness", 2500, "2 hours", "Descend into a centuries-old Champagne cellar for a guided tasting of Grandes Marques.", -0.03, -0.02),
+        ],
+    }
+
     def _mock_experiences(
         self, city_name: str, lat: float, lng: float
     ) -> list[dict[str, Any]]:
-        """Generate mock experience data for development."""
-        experiences_data = [
-            ("Historical Walking Tour", "culture", 500, "3 hours"),
-            ("Local Food Tour", "food", 1500, "4 hours"),
-            ("Sunset Viewpoint", "sightseeing", 0, "1 hour"),
-            ("Traditional Market Visit", "shopping", 200, "2 hours"),
-            ("Temple & Heritage Visit", "culture", 100, "2 hours"),
-            ("Adventure Park", "adventure", 2000, "5 hours"),
-            ("Botanical Garden", "nature", 50, "2 hours"),
-            ("City Museum", "culture", 300, "3 hours"),
-            ("Rooftop Bar Experience", "nightlife", 1000, "2 hours"),
-            ("Yoga & Wellness Session", "wellness", 800, "1.5 hours"),
-        ]
-        return [
-            {
+        """Generate city-specific curated mock experience data."""
+        key = (city_name or "").lower().strip()
+        city_exps = self._CITY_EXPERIENCES.get(key, None)
+
+        if not city_exps:
+            # Generic fallback with the city name filled in properly
+            city_exps = [
+                (f"Heritage Walking Tour of {city_name}", "culture", 500, "3 hours",
+                 f"Discover the history and architecture of {city_name} on a guided heritage walk.", 0.01, 0.01),
+                (f"{city_name} Street Food Tour", "food", 1200, "3 hours",
+                 f"Taste the most beloved local dishes and street snacks that define {city_name}'s culinary soul.", 0.02, -0.01),
+                (f"Sunrise at {city_name}'s Best Viewpoint", "sightseeing", 0, "1.5 hours",
+                 f"Wake early for a magical golden-hour view over {city_name}'s skyline.", -0.01, 0.02),
+                (f"Local Market Exploration", "shopping", 0, "2 hours",
+                 f"Browse colourful stalls selling handicrafts, textiles, spices, and local produce.", 0.03, 0.03),
+                (f"Cultural Museum of {city_name}", "culture", 400, "2 hours",
+                 f"Explore artefacts, art, and stories that capture the spirit of {city_name} through the ages.", 0.0, -0.02),
+                (f"Outdoor Adventure Day", "adventure", 2000, "5 hours",
+                 f"Hike, cycle, or zipline through {city_name}'s most stunning natural landscapes.", 0.08, 0.1),
+                (f"Botanical Garden Stroll", "nature", 50, "2 hours",
+                 f"Wander through tranquil gardens showcasing {city_name}'s native flora and heritage trees.", -0.02, 0.04),
+                (f"{city_name} Nightlife & Rooftop Bar", "nightlife", 1000, "3 hours",
+                 f"End your day at a rooftop bar with panoramic views of {city_name} lit up at night.", -0.03, -0.03),
+                (f"Wellness Spa & Meditation", "wellness", 1500, "2 hours",
+                 f"Recharge with traditional massage techniques and guided meditation in {city_name}.", 0.01, -0.04),
+                (f"Day Trip to {city_name} Surroundings", "nature", 800, "6 hours",
+                 f"Escape the city on a curated day trip to scenic villages or national parks nearby.", 0.15, 0.2),
+            ]
+
+        experiences = []
+        for i, item in enumerate(city_exps):
+            name, category, cost, duration, description, dlat, dlng = item
+            experiences.append({
                 "id": str(uuid.uuid4()),
-                "name": f"{name} — {city_name}",
-                "description": f"Experience the best of {city_name} with this {category} activity.",
+                "name": name,
+                "description": description,
                 "category": category,
-                "location": {"lat": lat + (i * 0.01), "lng": lng + (i * 0.01)},
-                "rating": 4.0 + (i % 10) * 0.1,
+                "location": {"lat": round(lat + dlat, 4), "lng": round(lng + dlng, 4)},
+                "rating": round(4.0 + (i * 0.09) % 1.0, 1),
                 "estimatedCost": cost,
                 "duration": duration,
                 "city": city_name,
                 "selected": False,
-            }
-            for i, (name, category, cost, duration) in enumerate(experiences_data)
-        ]
+            })
+        return experiences
+
