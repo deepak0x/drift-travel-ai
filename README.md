@@ -106,17 +106,58 @@ az keyvault secret set --vault-name drift-kv --name stripe-key --value YOUR_KEY
 
 ### Deploy to Azure
 
-To deploy the backend to Azure Functions:
+**1. Create Core Infrastructure & Database**
 ```bash
-cd apps/api
-func azure functionapp publish <your-function-app-name> --python --build remote
+# Set variables
+RG="drift-travel-rg"
+LOCATION="eastus"
+
+# Create Resource Group
+az group create --name $RG --location $LOCATION
+
+# Deploy Bicep template (CosmosDB, Key Vault, AI Services)
+az deployment group create \
+  --resource-group $RG \
+  --template-file infra/main.bicep
 ```
 
-To deploy the frontend (example using Azure App Service):
+**2. Deploy Backend (Azure Functions)**
+```bash
+cd apps/api
+
+# Create Storage Account (required for Functions)
+az storage account create --name driftfuncstorage --resource-group $RG --location $LOCATION --sku Standard_LRS
+
+# Create Python Function App (Linux Consumption)
+az functionapp create --name drift-api-func \
+  --resource-group $RG \
+  --storage-account driftfuncstorage \
+  --consumption-plan-location $LOCATION \
+  --runtime python --runtime-version 3.11 --os-type Linux
+
+# Publish code to Function App
+func azure functionapp publish drift-api-func --python --build remote
+```
+
+**3. Deploy Frontend (Next.js App Service)**
 ```bash
 cd apps/web
 npm run build
-az webapp up --name <your-webapp-name> --resource-group <your-resource-group> --html
+
+# Create App Service Plan (B1 basic Linux)
+az appservice plan create --name drift-web-plan --resource-group $RG --is-linux --sku B1
+
+# Create Web App
+az webapp create --name drift-travel-web \
+  --resource-group $RG \
+  --plan drift-web-plan \
+  --runtime "NODE:18-lts"
+
+# Deploy Next.js bundle via ZipDeploy
+cd out
+zip -r ../app.zip .
+cd ..
+az webapp deployment source config-zip --resource-group $RG --name drift-travel-web --src app.zip
 ```
 
 ### Run Locally
