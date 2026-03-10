@@ -128,6 +128,7 @@ class RetrieverAgent:
                         check_out=departure,
                         travelers=travelers,
                         currency=currency,
+                        city_name=city_name,
                     )
                     results["hotels"].extend(hotels)
 
@@ -204,10 +205,10 @@ class RetrieverAgent:
                 )
                 if iata_code:
                     hotels = await self._search_hotels(
-                        client, iata_code, arrival, departure, travelers, currency,
+                        client, iata_code, arrival, departure, travelers, currency, city_name,
                     )
                 else:
-                    hotels = []
+                    hotels = self._mock_hotels("", arrival, departure, currency, city_name)
                 results["hotels"].extend(hotels)
                 yield self._event(
                     "found", "retriever",
@@ -345,10 +346,11 @@ class RetrieverAgent:
         check_out: str,
         travelers: int,
         currency: str,
+        city_name: str = "",
     ) -> list[dict[str, Any]]:
         """Search hotels via Amadeus Hotel Search API."""
         if not self._amadeus_token:
-            return self._mock_hotels(city_code, check_in, check_out, currency)
+            return self._mock_hotels(city_code, check_in, check_out, currency, city_name)
 
         try:
             # Step 1: Get hotel IDs by city
@@ -361,7 +363,7 @@ class RetrieverAgent:
             hotel_ids = [h["hotelId"] for h in resp.json().get("data", [])[:5]]
 
             if not hotel_ids:
-                return self._mock_hotels(city_code, check_in, check_out, currency)
+                return self._mock_hotels(city_code, check_in, check_out, currency, city_name)
 
             # Step 2: Get offers for those hotels
             resp = await client.get(
@@ -392,7 +394,7 @@ class RetrieverAgent:
                     "id": str(uuid.uuid4()),
                     "name": hotel_info.get("name", "Hotel"),
                     "address": hotel_info.get("address", {}).get("lines", [""])[0] if hotel_info.get("address", {}).get("lines") else "",
-                    "city": city_code,
+                    "city": city_name or city_code,
                     "rating": float(hotel_info.get("rating", 3)),
                     "stars": int(hotel_info.get("rating", 3)),
                     "pricePerNight": round(price / nights, 2),
@@ -411,13 +413,13 @@ class RetrieverAgent:
 
             if not hotels:
                 logger.warning(f"No hotels found in {city_code}, using mock data")
-                return self._mock_hotels(city_code, check_in, check_out, currency)
+                return self._mock_hotels(city_code, check_in, check_out, currency, city_name)
 
             return hotels
 
         except Exception as e:
             logger.error(f"Hotel search error: {e}")
-            return self._mock_hotels(city_code, check_in, check_out, currency)
+            return self._mock_hotels(city_code, check_in, check_out, currency, city_name)
 
     # =========================================================================
     # OpenTripMap API — Experiences
@@ -600,21 +602,36 @@ class RetrieverAgent:
             })
         return flights
 
+    # City-specific hotel data for realistic mock fallback
+    _CITY_HOTEL_DATA: dict[str, dict] = {
+        "goa": {"area": "Calangute Beach Road", "lat": 15.5435, "lng": 73.7517,
+                 "hotels": [("Beach House Boutique",4,5500),("Taj Holiday Village",5,12000),("The Leela Goa",5,14000),("Hyatt Centric",4,7000),("Aloft Goa",4,6000),("Ibis Styles",3,3200),("Lemon Tree",3,4000),("Holiday Inn",4,5000)]},
+        "tokyo": {"area": "Shinjuku", "lat": 35.6895, "lng": 139.6917,
+                   "hotels": [("Park Hyatt Tokyo",5,22000),("Aman Tokyo",5,30000),("Andaz Tokyo",5,18000),("Hyatt Regency",4,10000),("Marriott Ginza",4,12000),("ANA InterContinental",5,15000),("Dormy Inn Shinjuku",3,5000),("Sotetsu Fresa Inn",3,4000)]},
+        "osaka": {"area": "Namba", "lat": 34.6937, "lng": 135.5023,
+                   "hotels": [("Conrad Osaka",5,18000),("St Regis Osaka",5,22000),("InterContinental",5,16000),("Cross Hotel",4,7000),("Dormy Inn Premium",3,5000),("APA Hotel Namba",3,3500),("Hearton Hotel",3,4000),("Moxy Osaka",4,6000)]},
+        "kyoto": {"area": "Gion District", "lat": 35.0116, "lng": 135.7681,
+                   "hotels": [("Four Seasons Kyoto",5,25000),("Ritz Carlton Kyoto",5,28000),("Hyatt Regency Kyoto",5,18000),("Westin Miyako",4,12000),("The Thousand Kyoto",4,10000),("ibis Kyoto Station",3,5000),("Dormy Inn Kyoto",3,4500),("APA Hotel Kyoto",3,3500)]},
+        "mumbai": {"area": "Bandra Kurla Complex", "lat": 19.0760, "lng": 72.8777,
+                    "hotels": [("Taj Mahal Palace",5,15000),("Oberoi Mumbai",5,18000),("ITC Maratha",5,12000),("Trident Nariman Point",5,10000),("JW Marriott",5,13000),("Hyatt Regency",4,7000),("Lemon Tree",3,4000),("Ibis Mumbai",3,3500)]},
+        "delhi": {"area": "Connaught Place", "lat": 28.6139, "lng": 77.2090,
+                   "hotels": [("The Imperial",5,12000),("Taj Palace",5,14000),("ITC Maurya",5,13000),("Hyatt Regency",4,7000),("Pullman Aerocity",4,6000),("Ibis Aerocity",3,3000),("Lemon Tree",3,3500),("Holiday Inn",4,5000)]},
+        "paris": {"area": "Le Marais", "lat": 48.8566, "lng": 2.3522,
+                   "hotels": [("Le Bristol Paris",5,35000),("The Ritz Paris",5,50000),("Four Seasons George V",5,40000),("Hotel du Louvre",4,15000),("Novotel Paris Les Halles",4,10000),("Ibis Paris Montmartre",3,7000),("citizenM Paris",4,8000),("Mercure Bastille",4,9000)]},
+        "default": {"area": "City Centre", "lat": 0, "lng": 0,
+                     "hotels": [("Grand Palace Hotel",5,12000),("Royal Residency",5,10000),("Park Inn Suites",4,7000),("Comfort Inn",4,5500),("City Heritage Hotel",4,6000),("Metro Inn",3,4000),("Travelers Lodge",3,3200),("Budget Suites",3,2800)]},
+    }
+
     def _mock_hotels(
-        self, city_code: str, check_in: str, check_out: str, currency: str
+        self, city_code: str, check_in: str, check_out: str, currency: str,
+        city_name: str = ""
     ) -> list[dict[str, Any]]:
-        """Generate mock hotel data for development."""
-        hotel_names = [
-            ("The Oberoi", 5, 12000),
-            ("Taj Palace", 5, 10000),
-            ("ITC Grand", 5, 9500),
-            ("Hyatt Regency", 4, 7000),
-            ("Marriott", 4, 6500),
-            ("Radisson Blu", 4, 5500),
-            ("Holiday Inn", 3, 4000),
-            ("Ibis", 3, 3000),
-        ]
-        nights = 3  # Default
+        """Generate realistic mock hotel data using city-specific names and neighborhoods."""
+        key = (city_name or city_code or "").lower().strip()
+        city_data = self._CITY_HOTEL_DATA.get(key, self._CITY_HOTEL_DATA["default"])
+        display_name = city_name or city_code
+
+        nights = 3
         try:
             d1 = datetime.strptime(check_in, "%Y-%m-%d")
             d2 = datetime.strptime(check_out, "%Y-%m-%d")
@@ -623,19 +640,24 @@ class RetrieverAgent:
             pass
 
         hotels = []
-        for name, stars, ppn in hotel_names:
+        amenity_sets = {
+            5: ["WiFi", "Pool", "Gym", "Restaurant", "Spa", "Concierge", "Room Service"],
+            4: ["WiFi", "Pool", "Gym", "Restaurant", "Room Service"],
+            3: ["WiFi", "Gym", "Restaurant"],
+        }
+        for name, stars, ppn in city_data["hotels"]:
             hotels.append({
                 "id": str(uuid.uuid4()),
-                "name": f"{name} {city_code}",
-                "address": f"Main Road, {city_code}",
-                "city": city_code,
-                "rating": stars - 0.2,
+                "name": name,
+                "address": f"{city_data['area']}, {display_name}",
+                "city": display_name,
+                "rating": round(stars - 0.2 + (hash(name) % 10) * 0.04, 1),
                 "stars": stars,
                 "pricePerNight": ppn,
                 "totalPrice": ppn * nights,
                 "currency": currency,
-                "amenities": ["WiFi", "Pool", "Gym", "Restaurant", "Spa"][:stars],
-                "location": {"lat": 28.6139, "lng": 77.2090},
+                "amenities": amenity_sets.get(stars, amenity_sets[3]),
+                "location": {"lat": city_data["lat"], "lng": city_data["lng"]},
                 "checkIn": check_in,
                 "checkOut": check_out,
                 "roomType": "Deluxe" if stars >= 4 else "Standard",
