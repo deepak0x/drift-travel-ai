@@ -76,6 +76,7 @@ class RetrieverAgent:
 
     async def retrieve_all(
         self,
+        origin: str,
         cities: list[dict[str, Any]],
         start_date: str,
         end_date: str,
@@ -98,6 +99,26 @@ class RetrieverAgent:
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Authenticate with Amadeus
             await self._authenticate_amadeus(client)
+
+            # Fetch outbound flight from origin to first city
+            if cities and origin:
+                first_city = cities[0]
+                first_city_iata, _, _ = self._resolve_city(first_city)
+                # Quick hack: Assume 'origin' from UI is 3 letters (IATA) if short, else mock.
+                # In a real app we'd map "London" to LON/LHR using Azure Maps or Amadeus.
+                # If they typed a long string, let's just use the first 3 chars or assuming it's a code for the mock.
+                origin_iata = origin[:3].upper() if origin else ""
+                
+                if first_city_iata and origin_iata and origin_iata != first_city_iata:
+                    outbound_flights = await self._search_flights(
+                        client=client,
+                        origin=origin_iata,
+                        destination=first_city_iata,
+                        date=start_date,
+                        travelers=travelers,
+                        currency=currency,
+                    )
+                    results["flights"].extend(outbound_flights)
 
             for i, city in enumerate(cities):
                 city_name = city.get("cityName", "")
@@ -149,6 +170,7 @@ class RetrieverAgent:
 
     async def retrieve_streaming(
         self,
+        origin: str,
         cities: list[dict[str, Any]],
         start_date: str,
         end_date: str,
@@ -172,6 +194,28 @@ class RetrieverAgent:
             yield self._event("searching", "retriever", "Authenticating with travel APIs...")
             await self._authenticate_amadeus(client)
             yield self._event("progress", "retriever", "Connected to Amadeus API ✓")
+
+            # Fetch outbound flight from origin to first city
+            if cities and origin:
+                first_city = cities[0]
+                first_city_iata, _, _ = self._resolve_city(first_city)
+                origin_iata = origin[:3].upper() if origin else ""
+
+                if first_city_iata and origin_iata and origin_iata != first_city_iata:
+                    yield self._event(
+                        "searching", "retriever",
+                        f"✈️ Searching outbound flights: {origin_iata} → {first_city.get('cityName', '')}..."
+                    )
+                    outbound_flights = await self._search_flights(
+                        client, origin_iata, first_city_iata,
+                        start_date, travelers, currency,
+                    )
+                    results["flights"].extend(outbound_flights)
+                    yield self._event(
+                        "found", "retriever",
+                        f"Found {len(outbound_flights)} outbound flight options",
+                        {"count": len(outbound_flights), "type": "flights"},
+                    )
 
             for i, city in enumerate(cities):
                 city_name = city.get("cityName", "Unknown")

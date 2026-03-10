@@ -57,13 +57,14 @@ async function apiFetch<T>(
 // ============================================================================
 
 export async function planTrip(input: {
+    origin: string;
     destination: string;
     startDate: string;
     endDate: string;
     travelers: number;
     budget: number;
     currency: string;
-    theme: string;
+    themes: string[];
     activityLevel: string;
     specialRequests?: string;
 }) {
@@ -103,6 +104,7 @@ export async function retrieveOptions(input: {
 
 export async function retrieveWithStreaming(
     input: {
+        origin: string;
         cities: Array<Record<string, unknown>>;
         startDate: string;
         endDate: string;

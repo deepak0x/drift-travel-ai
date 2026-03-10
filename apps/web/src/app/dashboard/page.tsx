@@ -197,37 +197,7 @@ export default function DashboardPage() {
 
                 {/* Right Column — Map, QR, Quick Info */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                    {/* Map Placeholder */}
-                    <div
-                        className="glass animate-slide-up"
-                        style={{
-                            borderRadius: "1rem",
-                            padding: "1.5rem",
-                            textAlign: "center",
-                        }}
-                    >
-                        <h3 style={{ fontWeight: 600, marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            🗺️ Trip Map
-                        </h3>
-                        <div
-                            style={{
-                                height: "200px",
-                                borderRadius: "0.75rem",
-                                background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(6, 182, 212, 0.1))",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                border: "1px dashed rgba(99, 102, 241, 0.2)",
-                            }}
-                        >
-                            <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🗺️</div>
-                                Azure Maps integration
-                                <br />
-                                <span style={{ fontSize: "0.75rem" }}>Connect your Azure Maps key to enable</span>
-                            </div>
-                        </div>
-                    </div>
+
 
                     {/* QR Codes */}
                     <div className="glass animate-slide-up stagger-1" style={{ borderRadius: "1rem", padding: "1.5rem" }}>

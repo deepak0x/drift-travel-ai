@@ -71,13 +71,14 @@ async def plan_trip(req: func.HttpRequest) -> func.HttpResponse:
 
         agent = PlannerAgent()
         result = await agent.generate_itinerary(
+            origin=body.get("origin", "Unknown Origin"),
             destination=body["destination"],
             start_date=body["startDate"],
             end_date=body["endDate"],
             travelers=body.get("travelers", 1),
             budget=body.get("budget", 100000),
             currency=body.get("currency", "INR"),
-            theme=body.get("theme", "cultural"),
+            themes=body.get("themes", ["cultural"]),
             activity_level=body.get("activityLevel", "moderate"),
             special_requests=body.get("specialRequests"),
         )
@@ -127,6 +128,7 @@ async def retrieve_options(req: func.HttpRequest) -> func.HttpResponse:
 
         agent = RetrieverAgent()
         results = await agent.retrieve_all(
+            origin=body.get("origin", ""),
             cities=body.get("cities", []),
             start_date=body.get("startDate", ""),
             end_date=body.get("endDate", ""),
@@ -168,6 +170,7 @@ async def retrieve_stream(req: func.HttpRequest) -> func.HttpResponse:
         events: list[dict] = []
 
         async for event in agent.retrieve_streaming(
+            origin=body.get("origin", ""),
             cities=body.get("cities", []),
             start_date=body.get("startDate", ""),
             end_date=body.get("endDate", ""),

@@ -31,13 +31,14 @@ export default function Home() {
   const { dispatch } = useTrip();
 
   const [form, setForm] = useState({
+    origin: "",
     destination: "",
     startDate: "",
     endDate: "",
     travelers: 2,
     budget: 150000,
     currency: "INR",
-    theme: "cultural",
+    themes: ["cultural"],
     activityLevel: "moderate",
     specialRequests: "",
   });
@@ -46,16 +47,30 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.destination || !form.startDate || !form.endDate) return;
+    if (!form.origin || !form.destination || !form.startDate || !form.endDate || form.themes.length === 0) return;
 
     setIsSubmitting(true);
-    dispatch({ type: "SET_INPUT", payload: form });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dispatch({ type: "SET_INPUT", payload: form as any });
     dispatch({ type: "SET_STEP", payload: "planning" });
     router.push("/plan");
   };
 
-  const updateField = (field: string, value: string | number) => {
+  const updateField = (field: string, value: string | number | string[]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleTheme = (value: string) => {
+    setForm((prev) => {
+      const currentThemes = Array.isArray(prev.themes) ? prev.themes : [prev.themes];
+      const isSelected = currentThemes.includes(value);
+      const newThemes = isSelected
+        ? currentThemes.filter((t) => t !== value)
+        : [...currentThemes, value];
+
+      // Ensure at least one theme is always selected
+      return { ...prev, themes: newThemes.length > 0 ? newThemes : [value] };
+    });
   };
 
   return (
@@ -113,19 +128,41 @@ export default function Home() {
           padding: "2.5rem",
         }}
       >
-        {/* Destination */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label htmlFor="destination">Where do you want to go?</label>
-          <input
-            id="destination"
-            className="input"
-            type="text"
-            placeholder="e.g. Rajasthan, Goa & Kerala or Japan..."
-            value={form.destination}
-            onChange={(e) => updateField("destination", e.target.value)}
-            required
-            style={{ fontSize: "1.1rem", padding: "1rem 1.25rem" }}
-          />
+        {/* Origin & Destination */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <div>
+            <label htmlFor="origin">Where are you leaving from?</label>
+            <input
+              id="origin"
+              className="input"
+              type="text"
+              placeholder="e.g. Mumbai, JFK, London..."
+              value={form.origin}
+              onChange={(e) => updateField("origin", e.target.value)}
+              required
+              style={{ fontSize: "1.1rem", padding: "1rem 1.25rem" }}
+            />
+          </div>
+          <div>
+            <label htmlFor="destination">Where do you want to go?</label>
+            <input
+              id="destination"
+              className="input"
+              type="text"
+              placeholder="e.g. Japan, Paris..."
+              value={form.destination}
+              onChange={(e) => updateField("destination", e.target.value)}
+              required
+              style={{ fontSize: "1.1rem", padding: "1rem 1.25rem" }}
+            />
+          </div>
         </div>
 
         {/* Dates */}
@@ -198,7 +235,7 @@ export default function Home() {
 
         {/* Trip Theme */}
         <div style={{ marginBottom: "1.5rem" }}>
-          <label>Trip Theme</label>
+          <label>Trip Theme (Select multiple)</label>
           <div
             style={{
               display: "grid",
@@ -206,38 +243,39 @@ export default function Home() {
               gap: "0.5rem",
             }}
           >
-            {themes.map((t) => (
-              <button
-                type="button"
-                key={t.value}
-                onClick={() => updateField("theme", t.value)}
-                style={{
-                  padding: "0.75rem 0.5rem",
-                  borderRadius: "0.75rem",
-                  border:
-                    form.theme === t.value
+            {themes.map((t) => {
+              const isSelected = form.themes.includes(t.value);
+              return (
+                <button
+                  type="button"
+                  key={t.value}
+                  onClick={() => toggleTheme(t.value)}
+                  style={{
+                    padding: "0.75rem 0.5rem",
+                    borderRadius: "0.75rem",
+                    border: isSelected
                       ? "2px solid #6366f1"
                       : "1px solid rgba(51, 65, 85, 0.5)",
-                  background:
-                    form.theme === t.value
+                    background: isSelected
                       ? "rgba(99, 102, 241, 0.12)"
                       : "rgba(15, 23, 42, 0.5)",
-                  color: form.theme === t.value ? "#818cf8" : "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: form.theme === t.value ? 600 : 400,
-                  transition: "all 0.2s ease",
-                  fontFamily: "var(--font-sans)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "0.25rem",
-                }}
-              >
-                <span style={{ fontSize: "1.25rem" }}>{t.icon}</span>
-                <span>{t.label}</span>
-              </button>
-            ))}
+                    color: isSelected ? "#818cf8" : "#94a3b8",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    fontWeight: isSelected ? 600 : 400,
+                    transition: "all 0.2s ease",
+                    fontFamily: "var(--font-sans)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                  }}
+                >
+                  <span style={{ fontSize: "1.25rem" }}>{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

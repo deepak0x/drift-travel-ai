@@ -46,13 +46,14 @@ export default function PlanPage() {
                 addEvent({ type: "thinking", agent: "planner", message: "Analyzing destination, weather, festivals, and local events..." });
 
                 const planResult = await planTrip({
+                    origin: state.input!.origin,
                     destination: state.input!.destination,
                     startDate: state.input!.startDate,
                     endDate: state.input!.endDate,
                     travelers: state.input!.travelers,
                     budget: state.input!.budget,
                     currency: state.input!.currency || "INR",
-                    theme: state.input!.theme || "cultural",
+                    themes: state.input!.themes || ["cultural"],
                     activityLevel: state.input!.activityLevel || "moderate",
                     specialRequests: state.input!.specialRequests,
                 });
@@ -78,6 +79,7 @@ export default function PlanPage() {
 
                 await retrieveWithStreaming(
                     {
+                        origin: state.input!.origin,
                         cities,
                         startDate: state.input!.startDate,
                         endDate: state.input!.endDate,

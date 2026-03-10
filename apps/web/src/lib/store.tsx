@@ -12,13 +12,14 @@ import React, { createContext, useContext, useReducer, ReactNode } from "react";
 // ============================================================================
 
 interface TripInput {
+    origin: string;
     destination: string;
     startDate: string;
     endDate: string;
     travelers: number;
     budget: number;
     currency: string;
-    theme: string;
+    themes: string[];
     activityLevel: string;
     specialRequests?: string;
 }
@@ -99,6 +100,9 @@ type TripAction =
     | { type: "TOGGLE_FLIGHT"; payload: Record<string, unknown> }
     | { type: "TOGGLE_HOTEL"; payload: Record<string, unknown> }
     | { type: "TOGGLE_EXPERIENCE"; payload: Record<string, unknown> }
+    | { type: "ADD_FLIGHTS"; payload: Array<Record<string, unknown>> }
+    | { type: "ADD_HOTELS"; payload: Array<Record<string, unknown>> }
+    | { type: "ADD_EXPERIENCES"; payload: Array<Record<string, unknown>> }
     | { type: "ADD_AGENT_EVENT"; payload: AgentEvent }
     | { type: "CLEAR_AGENT_EVENTS" }
     | { type: "ADD_CHAT_MESSAGE"; payload: ChatMessage }
@@ -195,6 +199,24 @@ function tripReducer(state: TripState, action: TripAction): TripState {
             return recalcBudget({ ...state, selectedExperiences });
         }
 
+        case "ADD_FLIGHTS":
+            return {
+                ...state,
+                flights: [...action.payload, ...state.flights],
+            };
+
+        case "ADD_HOTELS":
+            return {
+                ...state,
+                hotels: [...action.payload, ...state.hotels],
+            };
+
+        case "ADD_EXPERIENCES":
+            return {
+                ...state,
+                experiences: [...action.payload, ...state.experiences],
+            };
+
         case "ADD_AGENT_EVENT":
             return {
                 ...state,
@@ -232,7 +254,7 @@ function tripReducer(state: TripState, action: TripAction): TripState {
 
 function recalcBudget(state: TripState): TripState {
     const flightCost = state.selectedFlights.reduce(
-        (sum, f) => sum + (Number(f.price) || 0),
+        (sum, f) => sum + ((Number(f.price) || 0) * (state.input?.travelers || 1)),
         0
     );
     const hotelCost = state.selectedHotels.reduce(
@@ -276,10 +298,10 @@ const TripContext = createContext<{
 export function TripProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(tripReducer, initialState);
     return (
-        <TripContext.Provider value= {{ state, dispatch }
-}>
-    { children }
-    </TripContext.Provider>
+        <TripContext.Provider value={{ state, dispatch }
+        }>
+            {children}
+        </TripContext.Provider>
     );
 }
 

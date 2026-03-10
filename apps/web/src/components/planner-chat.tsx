@@ -211,6 +211,57 @@ export default function PlannerChat() {
                 }
             }
             dispatch({ type: "SET_ITINERARY", payload: updatedItinerary });
+        } else if (action.type === "suggest_hotels" && action.suggestions) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const newHotels = action.suggestions.map((h: any) => ({
+                id: `hotel-sugg-${Date.now()}-${Math.random()}`,
+                name: h.name || "Suggested Hotel",
+                address: h.address || h.location || `Near ${state.input?.destination || "City Center"}`,
+                city: state.input?.destination || "",
+                rating: h.stars || 4.5,
+                stars: h.stars || 4,
+                pricePerNight: h.price || 8000,
+                totalPrice: (h.price || 8000) * 3,
+                currency: state.input?.currency || "INR",
+                amenities: ["WiFi", "Pool", "Gym", "Breakfast"],
+                location: { lat: 0, lng: 0 },
+                checkIn: state.input?.startDate,
+                checkOut: state.input?.endDate,
+                roomType: h.roomType || "Deluxe",
+                isNew: true
+            }));
+            dispatch({ type: "ADD_HOTELS", payload: newHotels });
+        } else if (action.type === "suggest_flights" && action.suggestions) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const newFlights = action.suggestions.map((f: any) => ({
+                id: `flight-sugg-${Date.now()}-${Math.random()}`,
+                airline: f.airline || "Suggested Airline",
+                flightNumber: "AI-NEW",
+                departure: { airport: f.route?.split('-')[0] || "ORI", iataCode: f.route?.split('-')[0] || "ORI", dateTime: `${state.input?.startDate}T10:00:00` },
+                arrival: { airport: f.route?.split('-')[1] || "DES", iataCode: f.route?.split('-')[1] || "DES", dateTime: `${state.input?.startDate}T14:00:00` },
+                duration: "2h 30m",
+                stops: 0,
+                price: f.price || 15000,
+                currency: state.input?.currency || "INR",
+                cabinClass: "Economy",
+                isNew: true
+            }));
+            dispatch({ type: "ADD_FLIGHTS", payload: newFlights });
+        } else if (action.type === "suggest_experiences" && action.suggestions) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const newExps = action.suggestions.map((e: any) => ({
+                id: `exp-sugg-${Date.now()}-${Math.random()}`,
+                name: e.name || "Suggested Experience",
+                description: e.description || `Highly rated ${e.category} experience`,
+                category: e.category || "sightseeing",
+                location: { lat: 0, lng: 0 },
+                rating: 4.8,
+                estimatedCost: e.cost || 0,
+                duration: "3 hours",
+                city: state.input?.destination || "",
+                isNew: true
+            }));
+            dispatch({ type: "ADD_EXPERIENCES", payload: newExps });
         }
     };
 

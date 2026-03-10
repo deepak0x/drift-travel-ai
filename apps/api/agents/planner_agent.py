@@ -206,24 +206,27 @@ class PlannerAgent:
 
     def _build_user_prompt(
         self,
+        origin: str,
         destination: str,
         start_date: str,
         end_date: str,
         travelers: int,
         budget: float,
         currency: str,
-        theme: str,
+        themes: list[str],
         activity_level: str,
         special_requests: Optional[str],
     ) -> str:
         """Build the user prompt for itinerary generation."""
+        themes_str = ", ".join(t.title() for t in themes)
         prompt = f"""Plan a trip with these details:
 
+- **Origin (Flying from)**: {origin}
 - **Destination**: {destination}
 - **Dates**: {start_date} to {end_date}
 - **Travelers**: {travelers}
 - **Total Budget**: {budget:,.0f} {currency}
-- **Trip Theme**: {theme}
+- **Trip Themes (STRICTLY ADHERE)**: {themes_str}
 - **Activity Level**: {activity_level}
 """
         if special_requests:

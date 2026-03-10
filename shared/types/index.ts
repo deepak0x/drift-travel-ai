@@ -53,13 +53,14 @@ export type TripTheme =
 export type ActivityLevel = "relaxed" | "moderate" | "packed";
 
 export interface TripInput {
+  origin: string;
   destination: string;
   startDate: string;
   endDate: string;
   travelers: number;
   budget: number;
   currency: string;
-  theme: TripTheme;
+  themes: TripTheme[];
   activityLevel: ActivityLevel;
   specialRequests?: string;
 }

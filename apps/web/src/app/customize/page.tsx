@@ -154,8 +154,13 @@ function FlightsTab() {
                                 {/* Airline */}
                                 <div style={{ textAlign: "center", minWidth: "60px" }}>
                                     <div style={{ fontSize: "1.5rem" }}>✈️</div>
-                                    <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.25rem" }}>
-                                        {flight.airline as string}
+                                    <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.25rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                                        <span>{flight.airline as string}</span>
+                                        {Boolean(flight.isNew) && (
+                                            <span style={{ fontSize: "0.6rem", background: "#f59e0b", color: "#fff", padding: "0.1rem 0.3rem", borderRadius: "10px", fontWeight: 700 }}>
+                                                NEW ✨
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -232,8 +237,13 @@ function HotelsTab() {
                         {/* Hotel Header */}
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                             <div>
-                                <h3 style={{ fontWeight: 600, fontSize: "1rem", marginBottom: "0.25rem" }}>
+                                <h3 style={{ fontWeight: 600, fontSize: "1rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     {hotel.name as string}
+                                    {Boolean(hotel.isNew) && (
+                                        <span style={{ fontSize: "0.65rem", background: "#f59e0b", color: "#fff", padding: "0.1rem 0.4rem", borderRadius: "10px", fontWeight: 700 }}>
+                                            NEW ✨
+                                        </span>
+                                    )}
                                 </h3>
                                 <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
                                     {"⭐".repeat(Math.min(stars, 5))}
@@ -332,8 +342,13 @@ function ExperiencesTab() {
                             {isSelected && <span style={{ color: "#10b981" }}>✓</span>}
                         </div>
 
-                        <h3 style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.375rem" }}>
+                        <h3 style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "0.375rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                             {exp.name as string}
+                            {Boolean(exp.isNew) && (
+                                <span style={{ fontSize: "0.65rem", background: "#f59e0b", color: "#fff", padding: "0.1rem 0.4rem", borderRadius: "10px", fontWeight: 700 }}>
+                                    NEW ✨
+                                </span>
+                            )}
                         </h3>
                         <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginBottom: "0.75rem", lineHeight: 1.4 }}>
                             {exp.description as string}
