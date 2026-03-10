@@ -139,6 +139,8 @@ function FlightsTab() {
                 const isSelected = state.selectedFlights.some((f) => f.id === flight.id);
                 const dep = flight.departure as Record<string, unknown>;
                 const arr = flight.arrival as Record<string, unknown>;
+                const depCity = dep?.city ? String(dep.city) : "";
+                const arrCity = arr?.city ? String(arr.city) : "";
 
                 return (
                     <div
@@ -165,7 +167,7 @@ function FlightsTab() {
                                                 {(dep?.dateTime as string)?.slice(11, 16) || "06:00"}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{dep?.iataCode as string}</div>
-                                            {dep?.city && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{String(dep.city)}</div>}
+                                            {depCity && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{depCity}</div>}
                                         </div>
                                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem" }}>
                                             <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
@@ -181,7 +183,7 @@ function FlightsTab() {
                                                 {(arr?.dateTime as string)?.slice(11, 16) || "07:15"}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{arr?.iataCode as string}</div>
-                                            {arr?.city && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{String(arr.city)}</div>}
+                                            {arrCity && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{arrCity}</div>}
                                         </div>
                                     </div>
                                 </div>
