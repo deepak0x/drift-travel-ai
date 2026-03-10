@@ -230,7 +230,7 @@ export default function PlannerChat() {
         setIsTyping(true);
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:7071/api";
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://drift-dev-func-tpn6ksjztf6lc.azurewebsites.net/api";
             const response = await fetch(`${apiUrl}/chat`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

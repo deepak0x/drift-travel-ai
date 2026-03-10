@@ -298,25 +298,53 @@ class RetrieverAgent:
             data = resp.json()
 
             flights = []
+            # Airline code → name lookup
+            airline_names = {
+                "NH": "ANA (All Nippon Airways)", "JL": "Japan Airlines", "MM": "Peach Aviation",
+                "AI": "Air India", "6E": "IndiGo", "UK": "Vistara", "SG": "SpiceJet", "QP": "Akasa Air",
+                "AF": "Air France", "LH": "Lufthansa", "BA": "British Airways",
+                "EK": "Emirates", "QR": "Qatar Airways", "SQ": "Singapore Airlines",
+                "TG": "Thai Airways", "MH": "Malaysia Airlines", "EY": "Etihad Airways",
+            }
             for offer in data.get("data", []):
                 for segment in offer.get("itineraries", [{}])[0].get("segments", []):
+                    dep_iata = segment.get("departure", {}).get("iataCode", "")
+                    arr_iata = segment.get("arrival", {}).get("iataCode", "")
+                    carrier = segment.get("carrierCode", "")
+                    dep_name, dep_city = self._AIRPORT_NAMES.get(dep_iata, (f"{dep_iata} Airport", dep_iata))
+                    arr_name, arr_city = self._AIRPORT_NAMES.get(arr_iata, (f"{arr_iata} Airport", arr_iata))
+                    airline_name = airline_names.get(carrier, carrier)
+                    dur = offer.get("itineraries", [{}])[0].get("duration", "")
+                    # Convert PT1H10M → "1h 10m"
+                    import re as _re
+                    dm = _re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?", dur)
+                    dur_text = ""
+                    if dm:
+                        h = f"{dm.group(1)}h" if dm.group(1) else ""
+                        m = f" {dm.group(2)}m" if dm.group(2) else ""
+                        dur_text = (h + m).strip()
                     flights.append({
                         "id": str(uuid.uuid4()),
-                        "airline": segment.get("carrierCode", ""),
-                        "flightNumber": f"{segment.get('carrierCode', '')}{segment.get('number', '')}",
+                        "airline": airline_name,
+                        "airlineCode": carrier,
+                        "airlineLogo": f"https://pics.avs.io/60/60/{carrier}.png",
+                        "flightNumber": f"{carrier}{segment.get('number', '')}",
                         "departure": {
-                            "airport": segment.get("departure", {}).get("iataCode", ""),
-                            "iataCode": segment.get("departure", {}).get("iataCode", ""),
+                            "airport": dep_name,
+                            "city": dep_city,
+                            "iataCode": dep_iata,
                             "dateTime": segment.get("departure", {}).get("at", ""),
                             "terminal": segment.get("departure", {}).get("terminal"),
                         },
                         "arrival": {
-                            "airport": segment.get("arrival", {}).get("iataCode", ""),
-                            "iataCode": segment.get("arrival", {}).get("iataCode", ""),
+                            "airport": arr_name,
+                            "city": arr_city,
+                            "iataCode": arr_iata,
                             "dateTime": segment.get("arrival", {}).get("at", ""),
                             "terminal": segment.get("arrival", {}).get("terminal"),
                         },
-                        "duration": offer.get("itineraries", [{}])[0].get("duration", ""),
+                        "duration": dur,
+                        "durationText": dur_text,
                         "stops": len(offer.get("itineraries", [{}])[0].get("segments", [])) - 1,
                         "price": float(offer.get("price", {}).get("total", 0)),
                         "currency": offer.get("price", {}).get("currency", currency),
