@@ -564,43 +564,109 @@ class RetrieverAgent:
     # Mock Data (when APIs are not configured)
     # =========================================================================
 
+    # IATA → (full airport name, city) lookup
+    _AIRPORT_NAMES: dict[str, tuple[str, str]] = {
+        "GOI": ("Dabolim International Airport", "Goa"),
+        "BOM": ("Chhatrapati Shivaji Maharaj Intl", "Mumbai"),
+        "DEL": ("Indira Gandhi International Airport", "Delhi"),
+        "BLR": ("Kempegowda International Airport", "Bangalore"),
+        "HYD": ("Rajiv Gandhi International Airport", "Hyderabad"),
+        "MAA": ("Chennai International Airport", "Chennai"),
+        "JAI": ("Jaipur International Airport", "Jaipur"),
+        "COK": ("Cochin International Airport", "Kochi"),
+        "TYO": ("Narita International Airport", "Tokyo"),
+        "NRT": ("Narita International Airport", "Tokyo"),
+        "HND": ("Haneda Airport", "Tokyo"),
+        "OSA": ("Kansai International Airport", "Osaka"),
+        "KIX": ("Kansai International Airport", "Osaka"),
+        "ITM": ("Osaka Itami Airport", "Osaka / Kyoto"),
+        "CDG": ("Charles de Gaulle Airport", "Paris"),
+        "LHR": ("Heathrow Airport", "London"),
+        "DXB": ("Dubai International Airport", "Dubai"),
+        "SIN": ("Changi Airport", "Singapore"),
+        "BKK": ("Suvarnabhumi Airport", "Bangkok"),
+        "DPS": ("Ngurah Rai International Airport", "Bali"),
+    }
+
+    _ROUTE_AIRLINES: dict[str, list[tuple[str, str]]] = {
+        "japan":  [("NH", "ANA"), ("JL", "Japan Airlines"), ("NH", "ANA"), ("JL", "JAL Express"), ("MM", "Peach Aviation")],
+        "europe": [("AF", "Air France"), ("LH", "Lufthansa"), ("BA", "British Airways"), ("EK", "Emirates"), ("QR", "Qatar Airways")],
+        "sea":    [("SQ", "Singapore Airlines"), ("TG", "Thai Airways"), ("EK", "Emirates"), ("MH", "Malaysia Airlines"), ("QR", "Qatar Airways")],
+        "india":  [("AI", "Air India"), ("6E", "IndiGo"), ("UK", "Vistara"), ("SG", "SpiceJet"), ("QP", "Akasa Air")],
+        "intl":   [("AI", "Air India"), ("6E", "IndiGo"), ("EK", "Emirates"), ("EY", "Etihad Airways"), ("QR", "Qatar Airways")],
+    }
+
+    def _get_route_type(self, origin: str, destination: str) -> str:
+        japan  = {"TYO","NRT","HND","OSA","KIX","ITM","FUK","CTS"}
+        europe = {"CDG","LHR","AMS","FRA","FCO","BCN","IST"}
+        sea    = {"SIN","BKK","DPS","HKT","KUL","CGK"}
+        india  = {"GOI","BOM","DEL","BLR","HYD","MAA","CCU","JAI","COK","AMD","PNQ","LKO","UDR"}
+        o, d   = origin.upper(), destination.upper()
+        if o in india and d in india:
+            return "india"
+        if o in japan or d in japan:
+            return "japan"
+        if o in europe or d in europe:
+            return "europe"
+        if o in sea or d in sea:
+            return "sea"
+        return "intl"
+
     def _mock_flights(
         self, origin: str, destination: str, date: str, travelers: int, currency: str
     ) -> list[dict[str, Any]]:
-        """Generate mock flight data for development."""
-        airlines = [
-            ("AI", "Air India"), ("6E", "IndiGo"), ("UK", "Vistara"),
-            ("SG", "SpiceJet"), ("QP", "Akasa Air"),
-        ]
+        """Generate route-aware mock flights with correct airlines, airport names, duration."""
+        route = self._get_route_type(origin, destination)
+        airlines = self._ROUTE_AIRLINES.get(route, self._ROUTE_AIRLINES["intl"])
+
+        dep_airport, dep_city = self._AIRPORT_NAMES.get(origin.upper(), (f"{origin} International Airport", origin))
+        arr_airport, arr_city = self._AIRPORT_NAMES.get(destination.upper(), (f"{destination} International Airport", destination))
+
+        base_price  = {"japan": 35000, "europe": 45000, "sea": 18000, "india": 4500, "intl": 25000}.get(route, 20000)
+        dur_options = {"japan": [(1,10),(1,25),(1,10),(1,20),(1,15)],
+                       "europe": [(8,30),(9,0),(7,45),(9,30),(8,15)],
+                       "sea":    [(5,30),(6,0),(5,0),(6,30),(5,45)],
+                       "india":  [(1,30),(2,0),(1,45),(2,15),(1,30)],
+                       "intl":   [(6,0),(7,0),(5,30),(8,0),(6,30)]}.get(route, [(3,0),(3,30),(4,0),(3,15),(4,30)])
+
         flights = []
         for i, (code, name) in enumerate(airlines):
-            base_price = 4500 + (i * 800)
+            dep_hour = 6 + i * 2
+            dur_h, dur_m = dur_options[i % len(dur_options)]
+            arr_h = dep_hour + dur_h + (1 if dep_hour + dur_h >= 24 else 0)
+            price = int(base_price * (1 + i * 0.08)) * travelers
+
             flights.append({
                 "id": str(uuid.uuid4()),
                 "airline": name,
+                "airlineCode": code,
                 "airlineLogo": f"https://pics.avs.io/60/60/{code}.png",
-                "flightNumber": f"{code}{100 + i * 23}",
+                "flightNumber": f"{code}{200 + i * 17}",
                 "departure": {
-                    "airport": f"{origin} International",
+                    "airport": dep_airport,
+                    "city": dep_city,
                     "iataCode": origin,
-                    "dateTime": f"{date}T{6 + i * 2:02d}:00:00",
+                    "dateTime": f"{date}T{dep_hour:02d}:00:00",
                     "terminal": "T1",
                 },
                 "arrival": {
-                    "airport": f"{destination} International",
+                    "airport": arr_airport,
+                    "city": arr_city,
                     "iataCode": destination,
-                    "dateTime": f"{date}T{8 + i * 2:02d}:30:00",
+                    "dateTime": f"{date}T{arr_h % 24:02d}:{dur_m:02d}:00",
                     "terminal": "T2",
                 },
-                "duration": f"PT{2 + i % 2}H{30}M",
+                "duration": f"PT{dur_h}H{dur_m:02d}M",
+                "durationText": f"{dur_h}h {dur_m:02d}m" if dur_m else f"{dur_h}h",
                 "stops": 0 if i < 3 else 1,
-                "price": base_price * travelers,
+                "price": price,
                 "currency": currency,
                 "cabinClass": "Economy",
                 "seatsAvailable": 10 - i,
                 "selected": False,
             })
         return flights
+
 
     # City-specific hotel data for realistic mock fallback
     _CITY_HOTEL_DATA: dict[str, dict] = {

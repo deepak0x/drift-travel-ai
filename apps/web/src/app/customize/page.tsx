@@ -120,6 +120,16 @@ export default function CustomizePage() {
 // Flights Tab
 // ============================================================================
 
+// Converts ISO 8601 duration like PT1H10M → "1h 10m"
+function formatDuration(iso: string): string {
+    if (!iso) return "";
+    const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!match) return iso;
+    const h = match[1] ? `${match[1]}h` : "";
+    const m = match[2] ? ` ${match[2]}m` : "";
+    return (h + m).trim() || iso;
+}
+
 function FlightsTab() {
     const { state, dispatch } = useTrip();
 
@@ -155,9 +165,12 @@ function FlightsTab() {
                                                 {(dep?.dateTime as string)?.slice(11, 16) || "06:00"}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{dep?.iataCode as string}</div>
+                                            {dep?.city && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{String(dep.city)}</div>}
                                         </div>
                                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem" }}>
-                                            <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{flight.duration as string}</div>
+                                            <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                                                {(flight.durationText as string) || formatDuration(flight.duration as string)}
+                                            </div>
                                             <div style={{ width: "80px", height: "2px", background: "linear-gradient(90deg, #6366f1, #06b6d4)", borderRadius: "1px" }} />
                                             <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
                                                 {(flight.stops as number) === 0 ? "Direct" : `${flight.stops} stop`}
@@ -168,6 +181,7 @@ function FlightsTab() {
                                                 {(arr?.dateTime as string)?.slice(11, 16) || "07:15"}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>{arr?.iataCode as string}</div>
+                                            {arr?.city && <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{String(arr.city)}</div>}
                                         </div>
                                     </div>
                                 </div>
